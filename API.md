@@ -13,6 +13,7 @@ All game paths below begin `/api/v1/games/{game_id}`.
 | Method | Path | Response / purpose |
 | --- | --- | --- |
 | GET | `/health` | API/database health (outside game prefix) |
+| GET | `/ready` | Database readiness and diagnostic dispatcher status (outside game prefix) |
 | GET | `/api/v1/games` | Array of game metadata and current versions |
 | POST | `/api/v1/games` | Create a new fictional match; body `{name?, home_name?, away_name?}`; returns snapshot, HTTP 201 |
 | GET | `/api/v1/integrations/hokejovy-zapis/games/{external_game_id}/preview` | Normalize source match/rosters; optional `?force=true` bypasses preview cache |
@@ -31,9 +32,15 @@ All game paths below begin `/api/v1/games/{game_id}`.
 | GET | `/suggestions?team_id=...&outgoing_ids=id1,id2` | Eligible bench ranking, groups and observed combinations |
 | POST | `/actions` | Transactional command; returns authoritative snapshot |
 | POST | `/clock/observations` | External clock input; supervisor and configured source required |
+| GET | `/clock/authority` | Supervisor-only v2 ownership, state version and configured source/service choices |
+| POST | `/clock/authority` | Supervisor-only explicit manual/external clock handover; returns v1 snapshot |
 | WS | `/ws` | Snapshot/event stream; optional `?token=...` |
 
 `POST /api/v1/games` starts from the demonstration provider. For an external roster, use the preview/import workflow below. Imported locations and metadata become local game state; ordinary tracking does not depend on source availability.
+
+The authority routes require `TOI_STREAM_ENABLED=true`. `GET /clock/authority` returns `{version,authority,sources}`, with `sources:[{source,service_id}]` restricted to configured, unexpired clock writers for that game. `POST /clock/authority` accepts `{request_id,expected_version,mode:"external",source,service_id}` or `{request_id,expected_version,mode:"manual"}`. External ownership starts stale/paused until a valid fenced observation arrives. Manual start/pause/set/advance also takes ownership back. Reuse the exact request ID and body after a lost response; version conflicts require resynchronization.
+
+Legacy `/clock/observations` is available only before a game activates v2. Activated games reject unfenced input; use the scoped v2 connection and ownership generation documented in [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md#7-authoritative-clock-connection).
 
 ## Hokejový Zápis import and refresh
 

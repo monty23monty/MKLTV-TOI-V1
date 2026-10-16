@@ -146,6 +146,8 @@ Browser WebSockets cannot add an arbitrary Authorization header. The prototype a
 
 ## Scoreboard / OCR clock observations
 
+The endpoint and automatic ownership behavior below apply only to games that have **not** activated v2. For v2 games, configure a dedicated clock service token, select its source in the operator clock dialog, and use the fenced duplex protocol in [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md#7-authoritative-clock-connection). Activated games reject the unfenced v1 observation endpoint; a fresh reading cannot take control back after manual takeover.
+
 `ClockProvider` and `ClockObservation` describe the adapter contract. A bridge can read the existing scoreboard/OCR pipeline, normalize its values and submit an observation to `POST /api/v1/games/{game_id}/clock/observations`:
 
 ```json

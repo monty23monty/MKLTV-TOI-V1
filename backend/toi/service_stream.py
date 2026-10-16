@@ -226,7 +226,8 @@ class Session:
                     return
                 except StoreError as error:
                     session_code = _store_code(error)
-                    self.fail(session_code, str(error), bounds=getattr(error, "details", {}))
+                    self.fail(session_code, str(error), 1013 if error.status == 503 else 1008,
+                              bounds=getattr(error, "details", {}))
                     return
                 continue
             if self.command_task and not self.command_task.done():
@@ -529,6 +530,10 @@ class ServiceStream:
             session.error("FORBIDDEN", "Service is not authorized for this operation", request_id)
         except StoreError as error:
             code = _store_code(error)
+            if code == "SERVER_OVERLOADED":
+                session.error("RATE_LIMITED", "The game admission queue is full; retry after a short delay", request_id,
+                              retryable=True, retry_after=100)
+                return
             version = None
             with suppress(Exception):
                 version = (await run_in_threadpool(self.store.get, session.game_id))["version"]
@@ -685,7 +690,8 @@ class ServiceStream:
                 code = _store_code(error)
                 if code == "GAME_NOT_FOUND":
                     code = "AUTHORIZATION_FAILED"
-                session.fail(code, str(error), bounds=getattr(error, "details", {}))
+                session.fail(code, str(error), 1013 if error.status == 503 else 1008,
+                             bounds=getattr(error, "details", {}))
             if not session.fatal:
                 receiver = asyncio.create_task(session.receiver())
                 heartbeat = asyncio.create_task(session.heartbeat())

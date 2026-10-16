@@ -1,7 +1,7 @@
 {
   "status": "IMPLEMENTED_V2",
   "protocol": 2,
-  "description": "Independent proposed wire examples, not a single session transcript and not evidence of implemented endpoints. State/tick examples use a deliberately reduced fictional four-player match for readability; actual snapshots contain every rostered player. Full-line command examples independently illustrate payload structure and are not commands applied to that reduced match. TOI is computed with the current domain. Cursors are explanatory opaque placeholders, never production tokens.",
+  "description": "Independent v2 wire examples, not a single session transcript. State/tick examples use a deliberately reduced fictional four-player match for readability; actual snapshots contain every rostered player. Full-line command examples independently illustrate payload structure and are not commands applied to that reduced match. TOI is computed with the current domain. Cursors are explanatory opaque placeholders, never production tokens.",
   "valid": [
     {
       "name": "open-live-session",

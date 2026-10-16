@@ -121,10 +121,41 @@ Only disposable CI containers/volumes were removed. The workflow publishes no im
 
 After a user reported the default-Dockerfile error with the correct path field, the exact Portainer 2.45.0 source showed that its URL-build query serializer inserts the remote Git URL without escaping `#` before the `dockerfile` parameter. A Node URL-parsing reproduction confirmed that a literal Git fragment removes that parameter from the server-bound query; both a plain `.git` URL and a `%23`-encoded fragment preserve it. `git ls-remote --symref origin HEAD` confirmed `codex/ipad-operator` is the repository's default branch. The guide now uses the plain URL and explains the affected-version workaround. This was a source-level/request-parsing check; a new build on the user's Portainer host has not been observed. No application or image runtime files changed.
 
-## External service interface design validation
+## Earlier external service interface design validation
 
 [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md) documents current HTTP input and outbound v1 WebSockets, then specifies an unimplemented v2 duplex service protocol for authoritative clock input, individual player TOI, on-ice lineups and a durable recorded-change journal. The design includes explicit clock ownership, replay barriers/checkpoints, service authorization, flow control, deployment and measurable latency/soak acceptance criteria.
 
 The offline [contract checker](scripts/validate_service_interface.py) passed the Draft 2020-12 schema, all **41 accepted and 39 rejected examples**, direction separation and UUID format assertions. All **12 embedded v1 payload definitions** match the existing Pydantic source, and examples for all six existing action types pass those models. Additional CLI checks reject wrong directions, remote schema references, duplicate JSON keys and non-JSON numeric constants. Ruff passed for the checker. Its optional JSON Schema dependency was installed only under ignored tooling artifacts; production dependencies are unchanged.
 
 The existing API regression module passed **15 tests** (one existing Starlette/httpx deprecation warning). No application source, tracking rules, UI or image runtime changed in this documentation/design task. No v2 endpoint, durability guarantee, latency benchmark or soak result is claimed as implemented or measured; those acceptance checks remain work for the future runtime implementation. The user's Portainer frontend restart issue was not verified as resolved during the design task.
+
+## V2 runtime and release validation
+
+Release 2.0.0 implements the previously documented protocol. The earlier design-only status above is retained as a historical record and is superseded by this section.
+
+Native validation passed **338 backend tests**, including storage/journal, clock fencing, service authorization, real ASGI duplex sessions, replay barriers, strict frame validation and bounded shared admission. The last WebSocket overload refinement also passed the 18 coordinator/v1 API regressions. **79 frontend tests**, strict TypeScript and the production Vite build passed, including operator clock-source selection, lost-response retries and stale/disconnected interpolation. Ruff passed. The contract checker passed all **41 positive / 39 negative examples**, 12 matching v1 payload definitions and six command types. One existing Starlette/httpx deprecation warning remains.
+
+The [Linux PostgreSQL/nginx container run](https://github.com/monty23monty/MKLTV-TOI-V1/actions/runs/38975191444) passed for implementation commit `b93f4aeaef4d654459a0943b40d4912f0550cb64`. It built both final images, verified the original operator workflow, and exercised the v2 handshake, authenticated reads, command ACK linked to its journal record, duplicate retry, penalty transition, replay, explicit clock handover, manual fencing and undo. Removing/recreating the containers with the same PostgreSQL volume preserved both the v1 match fingerprint and v2 journal checkpoint. The release workflow repeats these checks on the tagged revision before publishing artifacts.
+
+### Short local network measurement
+
+[scripts/benchmark_service_network.py](scripts/benchmark_service_network.py) starts an isolated backend and temporary SQLite database. The measurement used Windows 11, Python 3.12.14, real uvicorn loopback TCP, 40 rostered players, 200 preloaded movements, **20 v2 service sockets plus two v1 operator sockets**, and 30 mutations over 9.707 seconds: ten running external-clock observations and 20 movements.
+
+| Measurement | p50 | p95 | p99 | Maximum |
+| --- | --- | --- | --- | --- |
+| Command send → committed ACK | 39.221 ms | 59.484 ms | 71.879 ms | 75.204 ms |
+| Command send → slowest of all 20 record recipients | 50.202 ms | 70.215 ms | 83.887 ms | 87.728 ms |
+| Fresh connection → snapshot/ready | 33.851 ms | 50.307 ms | 51.289 ms | 51.534 ms |
+| Consecutive live tick interval | 220.994 ms | 245.522 ms | 252.973 ms | 253.129 ms |
+
+Delivered **600/600 expected records**, with zero frame/journal sequence gaps; every consumer received complete 40-player timing samples. The maximum tick interval slightly exceeded the provisional 250 ms upper bound. These results predate the final bounded-admission refinement and are a short local sample, not proof of the three-hour PostgreSQL/nginx/LAN reference target. TLS, actual iPad hardware and LAN latency were not measured. The ignored JSON report is `artifacts/service-network-benchmark.json`.
+
+### Storage growth measurement
+
+[scripts/benchmark_service_store.py](scripts/benchmark_service_store.py) preloaded 300 valid movements, then applied 300 logically 1 Hz observations at accelerated speed on isolated SQLite. Per-observation storage latency was p50 **11.546 ms**, p95 **12.888 ms**, p99 **16.550 ms**, maximum **26.340 ms**. Observations added no domain history events or shifts; the history payload stayed at **141,522 bytes**. Compact receipts stayed at **240 bytes** each rather than retaining a full growing match response. The 300 clock journal records added **5,658,238 JSON bytes**; allocated database size increased by **6,963,200 bytes**. This is storage-only validation, without network fanout or real-time pacing; it does not establish long-term retention capacity. The ignored report is `artifacts/service-store-benchmark.json`.
+
+### Update architecture checks and limits
+
+Both images carry a matching version and full source revision. CI exercises PostgreSQL migration/startup, nginx routing and persistence before publication; the release pipeline additionally saves/reloads the image bundle and verifies embedded revisions. `release-manifest.json` records actual registry publication and anonymous pull outcomes. [UPDATING.md](UPDATING.md) documents backup, retained `toi-v1_postgres_data`, version-tag updates, archive fallback, compatible rollback and offline generation rotation after restore.
+
+The user's Portainer host was not accessed or upgraded. Linux amd64 container validation does not imply ARM64 support; the first bundle is amd64 only. The sustained three-hour reference soak, production monitoring and physical iPad Safari validation remain deployment checks. No unattended production update is configured.

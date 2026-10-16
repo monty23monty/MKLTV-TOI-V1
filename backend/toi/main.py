@@ -320,13 +320,18 @@ def create_app(url: str | None = None) -> FastAPI:
         except (PermissionError, ValueError, StoreError):
             await websocket.close(code=1008, reason="Authentication failed or game unavailable")
             return
-        async with coordinator.lock(game_id):
-            queue = hub.subscribe(game_id)
-            try:
-                initial = await run_in_threadpool(lambda: public_snapshot(store.get(game_id)))
-            except Exception:
-                hub.unsubscribe(game_id, queue)
-                raise
+        try:
+            async with coordinator.lock(game_id):
+                queue = hub.subscribe(game_id)
+                try:
+                    initial = await run_in_threadpool(lambda: public_snapshot(store.get(game_id)))
+                except Exception:
+                    hub.unsubscribe(game_id, queue)
+                    raise
+        except StoreError as error:
+            await websocket.close(code=1013 if error.status == 503 else 1008,
+                                  reason="Game busy; retry shortly" if error.status == 503 else "Game unavailable")
+            return
         try:
             # Subscribe before yielding to accept: no accepted command can fall
             # between the initial snapshot and the event stream.

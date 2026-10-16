@@ -90,6 +90,8 @@ Set or retain these stack environment variables:
 
 The old `TOI_IMAGE_TAG=portainer-v1` is no longer used by this release stack. A full template is provided in [release.env.example](release.env.example). Leave `TOI_IMAGE_REGISTRY` at its default `ghcr.io/monty23monty` unless using your own registry.
 
+On the first start with streaming enabled, **all saved games are activated**, even if no service tokens are configured yet. Existing external clocks pause at their saved cutoff and require a configured v2 bridge plus explicit handover in the operator clock dialog. Manual controls remain available. Stop an old v1 clock bridge before deploying: activated games reject its unfenced observations. Disabling `TOI_STREAM_ENABLED` later does not remove the persisted fence; it is not a rollback procedure.
+
 For registry deployment, enable **Re-pull image** when updating. For archive deployment, disable **Re-pull image** and set `TOI_PULL_POLICY=never` so Portainer uses the loaded images. Click **Update the stack**. Keep the PostgreSQL image on major version 17 and keep its credentials unchanged; initialization variables do not rotate an existing database password.
 
 ### 4. Verify before resuming
