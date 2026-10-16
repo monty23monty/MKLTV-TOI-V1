@@ -19,7 +19,11 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     environment:
-      TOI_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-toi}:${POSTGRES_PASSWORD:-toi_local_only}@db:5432/${POSTGRES_DB:-lightning_toi}
+      TOI_POSTGRES_HOST: db
+      TOI_POSTGRES_PORT: "5432"
+      TOI_POSTGRES_DB: ${POSTGRES_DB:-lightning_toi}
+      TOI_POSTGRES_USER: ${POSTGRES_USER:-toi}
+      TOI_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toi_local_only}
       TOI_CORS_ORIGINS: ${TOI_CORS_ORIGINS:-http://localhost:8080}
       TOI_AUTH_TOKEN: ${TOI_AUTH_TOKEN:-}
       TOI_OPERATOR_TOKENS: ${TOI_OPERATOR_TOKENS:-}

@@ -1,0 +1,89 @@
+name: Container stack smoke test
+
+on:
+  push:
+    branches: [codex/ipad-operator]
+    paths:
+      - '.github/workflows/container-smoke.yml'
+      - 'Dockerfile.*'
+      - '.dockerignore'
+      - 'compose*.yaml'
+      - 'nginx.conf'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'scripts/start-backend.sh'
+      - 'scripts/smoke_portainer.py'
+  pull_request:
+    paths:
+      - '.github/workflows/container-smoke.yml'
+      - 'Dockerfile.*'
+      - '.dockerignore'
+      - 'compose*.yaml'
+      - 'nginx.conf'
+      - 'backend/**'
+      - 'frontend/**'
+      - 'scripts/start-backend.sh'
+      - 'scripts/smoke_portainer.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-compose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPOSE_PROJECT_NAME: mkltoi-ci
+      TOI_IMAGE_TAG: ci
+      TOI_BIND_ADDRESS: 127.0.0.1
+      TOI_FRONTEND_PORT: '18080'
+      POSTGRES_DB: lightning_toi
+      POSTGRES_USER: toi
+      POSTGRES_PASSWORD: 'ci-db@pass:/?#%$'
+      TOI_AUTH_TOKEN: ci-operator-token
+      TOI_CORS_ORIGINS: http://127.0.0.1:18080
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Mask test credentials
+        run: |
+          echo "::add-mask::$POSTGRES_PASSWORD"
+          echo "::add-mask::$TOI_AUTH_TOKEN"
+      - name: Build Linux images
+        run: |
+          docker build -f Dockerfile.backend -t mkltoi-backend:ci .
+          docker build -f Dockerfile.frontend -t mkltoi-frontend:ci .
+      - name: Validate and start image-only Portainer stack
+        run: |
+          docker compose -f compose.portainer.yaml config --quiet
+          docker compose -f compose.portainer.yaml up -d --wait --wait-timeout 180
+          curl --fail --silent --show-error http://127.0.0.1:18080/health
+      - name: Exercise nginx, authentication, live changes and Undo
+        id: smoke
+        run: |
+          result=$(docker compose -f compose.portainer.yaml exec -T backend python - --origin "$TOI_CORS_ORIGINS" < scripts/smoke_portainer.py)
+          echo "$result"
+          echo "game_id=$(echo "$result" | jq -er '.game_id')" >> "$GITHUB_OUTPUT"
+          echo "fingerprint=$(echo "$result" | jq -er '.fingerprint')" >> "$GITHUB_OUTPUT"
+      - name: Recreate containers while preserving PostgreSQL volume
+        run: |
+          docker compose -f compose.portainer.yaml down
+          docker compose -f compose.portainer.yaml up -d --wait --wait-timeout 180
+      - name: Verify game, TOI and history survived recreation
+        env:
+          SMOKE_GAME_ID: ${{ steps.smoke.outputs.game_id }}
+          SMOKE_FINGERPRINT: ${{ steps.smoke.outputs.fingerprint }}
+        run: |
+          docker compose -f compose.portainer.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" --verify-game "$SMOKE_GAME_ID" \
+            --fingerprint "$SMOKE_FINGERPRINT" < scripts/smoke_portainer.py
+      - name: Collect diagnostics after failure
+        if: failure()
+        run: |
+          docker compose -f compose.portainer.yaml ps --all
+          docker compose -f compose.portainer.yaml logs --no-color --tail=150
+      - name: Remove ephemeral CI containers and volume
+        if: always()
+        run: docker compose -f compose.portainer.yaml down --volumes --remove-orphans

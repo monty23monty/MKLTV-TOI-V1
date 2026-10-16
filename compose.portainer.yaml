@@ -1,0 +1,84 @@
+# Linux Docker Standalone / Portainer CE or BE.
+# Build both application images on the target Docker host first; see PORTAINER.md.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lightning_toi}
+      POSTGRES_USER: ${POSTGRES_USER:-toi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  backend:
+    image: mkltoi-backend:${TOI_IMAGE_TAG:-portainer-v1}
+    pull_policy: never
+    environment:
+      TOI_POSTGRES_HOST: db
+      TOI_POSTGRES_PORT: "5432"
+      TOI_POSTGRES_DB: ${POSTGRES_DB:-lightning_toi}
+      TOI_POSTGRES_USER: ${POSTGRES_USER:-toi}
+      TOI_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the stack environment}
+      TOI_AUTH_TOKEN: ${TOI_AUTH_TOKEN:?Set TOI_AUTH_TOKEN in the stack environment}
+      TOI_OPERATOR_TOKENS: ${TOI_OPERATOR_TOKENS:-}
+      TOI_CORS_ORIGINS: ${TOI_CORS_ORIGINS:-http://localhost:8080}
+      TOI_CLOCK_SOURCE: ${TOI_CLOCK_SOURCE:-manual}
+      TOI_CLOCK_STALE_MS: ${TOI_CLOCK_STALE_MS:-10000}
+      HOKEJOVY_ZAPIS_BASE_URL: ${HOKEJOVY_ZAPIS_BASE_URL:-https://api.hokejovyzapis.cz}
+      HOKEJOVY_ZAPIS_API_PREFIX: ${HOKEJOVY_ZAPIS_API_PREFIX:-/v1/d07ssvctxm}
+      HOKEJOVY_ZAPIS_TIMEOUT_SECONDS: ${HOKEJOVY_ZAPIS_TIMEOUT_SECONDS:-10}
+      HOKEJOVY_ZAPIS_CACHE_TTL_SECONDS: ${HOKEJOVY_ZAPIS_CACHE_TTL_SECONDS:-60}
+      HOKEJOVY_ZAPIS_ALLOWED_HOSTS: ${HOKEJOVY_ZAPIS_ALLOWED_HOSTS:-api.hokejovyzapis.cz}
+    networks:
+      - operator
+      - database
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  frontend:
+    image: mkltoi-frontend:${TOI_IMAGE_TAG:-portainer-v1}
+    pull_policy: never
+    ports:
+      - "${TOI_BIND_ADDRESS:-0.0.0.0}:${TOI_FRONTEND_PORT:-8080}:80"
+    networks:
+      - operator
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+volumes:
+  postgres_data:
+
+networks:
+  operator:
+    driver: bridge
+  database:
+    driver: bridge
+    internal: true

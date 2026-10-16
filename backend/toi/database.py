@@ -4,12 +4,33 @@ import os
 from pathlib import Path
 
 from sqlalchemy import create_engine, event
+from sqlalchemy.engine import URL
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 
 def database_url() -> str:
-    return os.getenv("TOI_DATABASE_URL", "sqlite:///./data/toi.db")
+    explicit_url = os.getenv("TOI_DATABASE_URL")
+    if explicit_url is not None:
+        return explicit_url
+    postgres_fields = ("HOST", "PORT", "DB", "USER", "PASSWORD")
+    if not any(f"TOI_POSTGRES_{field}" in os.environ for field in postgres_fields):
+        return "sqlite:///./data/toi.db"
+    settings = {field: os.getenv(f"TOI_POSTGRES_{field}", "") for field in postgres_fields}
+    missing = [f"TOI_POSTGRES_{field}" for field in ("HOST", "DB", "USER", "PASSWORD")
+               if not settings[field].strip()]
+    if missing:
+        raise ValueError(f"PostgreSQL configuration requires {', '.join(missing)}")
+    try:
+        port = int(os.getenv("TOI_POSTGRES_PORT", "5432"))
+    except ValueError:
+        raise ValueError("TOI_POSTGRES_PORT must be an integer between 1 and 65535") from None
+    if not 1 <= port <= 65535:
+        raise ValueError("TOI_POSTGRES_PORT must be an integer between 1 and 65535")
+    return URL.create(
+        "postgresql+psycopg", username=settings["USER"], password=settings["PASSWORD"],
+        host=settings["HOST"], port=port, database=settings["DB"],
+    ).render_as_string(hide_password=False)
 
 
 def make_engine(url: str):

@@ -4,6 +4,10 @@ A working standalone ice hockey operator dashboard for tracking both teams, subs
 
 The demonstration uses **fictional** Milton Keynes Storm and Northbank Wolves rosters: 20 players per team, four forward lines, three defensive pairs and two goalkeepers. No third-party services or accounts are required for the demo. An optional Hokejový Zápis import loads real match metadata, complete rosters, official starting players and generated lines/pairs from a numeric Game ID.
 
+## Deploy with Linux Portainer
+
+Use the image-only [Portainer stack](compose.portainer.yaml) and follow [PORTAINER.md](PORTAINER.md) for building the two images in Portainer, required environment variables, iPad access, HTTPS, updates and database backups. This deployment publishes the frontend to the LAN and keeps PostgreSQL/backend private. The source-build Docker Compose setup below is for local development.
+
 ## Start with Docker
 
 Install Docker with Compose, then run from the repository root.
@@ -68,7 +72,7 @@ Open [localhost:5173](http://localhost:5173). Vite proxies `/api` and WebSockets
 
 The iPad layout keeps both teams side by side in landscape and portrait. Portrait uses two rows of on-ice tiles per team to retain comfortable touch targets; smaller phone screens stack the teams. During normal play the bench stays hidden. Selecting an outgoing player reveals suggested replacements, and **Show full bench** opens all eligible alternatives in a bounded, internally scrolling panel.
 
-Keep the server computer and iPad on the same network. With native development running, open `http://<server-LAN-IP>:5173` in Safari; with Docker use `http://<server-LAN-IP>:8080`. Replace the placeholder with the server computer's local network address. `localhost` on the iPad refers to the iPad itself. The development script already listens on the network; API and WebSocket traffic use the frontend's same-origin proxy.
+Keep the server computer and iPad on the same network. With native development running, open `http://<server-LAN-IP>:5173` in Safari; with the Portainer stack use `http://<server-LAN-IP>:8080`. Replace the placeholder with the server computer's local network address. `localhost` on the iPad refers to the iPad itself. The development script already listens on the network; API and WebSocket traffic use the frontend's same-origin proxy.
 
 Operator Full Screen uses native fullscreen where Safari permits it and explicitly falls back to the focus layout otherwise. Safari on iPadOS 16.4 introduced the unprefixed Fullscreen API ([WebKit release notes](https://webkit.org/blog/13966/webkit-features-in-safari-16-4/)). The application also generates secure request identifiers on HTTP LAN origins where `crypto.randomUUID()` is unavailable. For shared deployment, follow the existing HTTPS/authentication and origin configuration guidance in [INTEGRATION.md](INTEGRATION.md).
 
