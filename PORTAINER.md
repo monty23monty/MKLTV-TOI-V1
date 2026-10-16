@@ -16,6 +16,8 @@ Open **Images → Build a new image**, use the URL build option/URL field, and b
 | Git URL | `https://github.com/monty23monty/MKLTV-TOI-V1.git#codex/ipad-operator` | Same URL |
 | Dockerfile path | `Dockerfile.backend` | `Dockerfile.frontend` |
 
+In the URL form, **Dockerfile path is a separate input below the URL**. Replace its `Dockerfile` value with the exact filename above for each build. The repository deliberately has no root file named `Dockerfile`: an error ending in `Cannot locate specified Dockerfile: Dockerfile` means the build is still searching for that default name. If the error keeps naming `Dockerfile` after you enter `Dockerfile.backend` or `Dockerfile.frontend`, use the SSH method below to pass the filename directly to Docker.
+
 Use the Git repository URL, including the branch fragment, so the build has the complete source tree for `COPY`. A raw Dockerfile URL alone is insufficient. Leave the frontend build argument `VITE_API_BASE_URL` empty: nginx supplies the same-origin API/WebSocket proxy.
 
 Wait for each build to finish successfully and confirm that both tags appear in **Images**. Docker downloads the base images and dependencies during these builds. The target host needs outbound access to GitHub, Docker Hub, PyPI and the npm registry. No registry login is needed for this public repository.
