@@ -2,6 +2,8 @@
 
 The v2 deployment uses **prebuilt release images**, instead of building images in Portainer. Both application images share one immutable version, selected by `TOI_RELEASE_TAG`. PostgreSQL and its named volume are separate from application releases.
 
+[Release v2.0.1 is published](https://github.com/monty23monty/MKLTV-TOI-V1/releases/tag/v2.0.1), with anonymous pulls verified for both GHCR images. No registry login or package-visibility change is needed for this release. The public image bundle was independently downloaded and its checksums verified as well.
+
 Use [compose.release.yaml](compose.release.yaml) for this workflow. [compose.portainer.yaml](compose.portainer.yaml) remains available for locally built images; its `TOI_IMAGE_TAG` variable is a different setting. These instructions target **Linux amd64, Docker Standalone and Docker Compose v2**. The first release does not publish ARM64 images.
 
 ## Architecture

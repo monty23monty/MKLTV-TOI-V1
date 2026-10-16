@@ -8,6 +8,8 @@ The demonstration uses **fictional** Milton Keynes Storm and Northbank Wolves ro
 
 Use the prebuilt-image [release stack](compose.release.yaml) and [UPDATING.md](UPDATING.md) for the one-time upgrade from your existing `toi-v1` stack and future release-tag updates. [PORTAINER.md](PORTAINER.md) also retains local-build instructions, required environment variables, iPad access, HTTPS and database backups. This deployment publishes the frontend to the LAN and keeps PostgreSQL/backend private. The source-build Docker Compose setup below is for local development.
 
+The first installable v2 release is [v2.0.1](https://github.com/monty23monty/MKLTV-TOI-V1/releases/tag/v2.0.1). Both images are publicly pullable from GHCR without login; the release also includes a verified image archive. [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md) documents the duplex clock connection, live player/lineup times and replayable recorded feed.
+
 ## Start with Docker
 
 Install Docker with Compose, then run from the repository root.
