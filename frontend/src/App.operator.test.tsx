@@ -95,8 +95,12 @@ function changePreset(name: string) {
   fireEvent.click(within(homeControls()).getByRole('button', { name: `Change ${name}` }))
 }
 function openBench() {
-  const trigger = within(homeControls()).getByRole('button', { name: /^(Bench|All replacements)$/ })
+  const trigger = within(homeControls()).getByRole('button', { name: /^(Show full bench|Hide full bench)$/ })
   if (trigger.getAttribute('aria-expanded') !== 'true') fireEvent.click(trigger)
+}
+
+function addPlayer() {
+  fireEvent.click(within(homeControls()).getByRole('button', { name: 'Add player' }))
 }
 
 async function enterOperatorMode() {
@@ -138,7 +142,9 @@ describe('minimal operator dashboard', () => {
     expect(container.querySelectorAll('.ice-players .player-tile')).toHaveLength(12)
     expect(container.querySelectorAll('.player-tile')).toHaveLength(12)
     expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
-    expect(within(homeControls()).getByRole('button', { name: 'Bench' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(homeControls()).getByRole('button', { name: 'Add player' })).toBeEnabled()
+    expect(within(screen.getByRole('region', { name: 'Away Fixture team controls' })).getByRole('button', { name: 'Add player' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Show full bench' })).not.toBeInTheDocument()
     expect(tile('home-7')).toHaveTextContent('LD')
     expect(tile('home-8')).toHaveTextContent('RD')
     expect(tile('home-11')).toHaveTextContent('GK')
@@ -243,7 +249,8 @@ describe('minimal operator dashboard', () => {
     game.state = { ...game.state!, version: 8, players: game.state!.players.map(player => player.id === 'home-1' ? { ...player, location: 'BENCH' } : player.id === 'home-4' ? { ...player, location: 'ON_ICE' } : player) }
     rerender(<App />)
     expect(screen.queryByTestId('player-home-1')).not.toBeInTheDocument()
-    expect(within(homeControls()).getByRole('button', { name: 'Bench' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(homeControls()).getByRole('button', { name: 'Add player' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Show full bench' })).not.toBeInTheDocument()
     expect(tile('home-4')).toHaveClass('on_ice')
     expect(tile('home-4')).toHaveAttribute('aria-pressed', 'false')
   })
@@ -257,7 +264,7 @@ describe('minimal operator dashboard', () => {
     expect(screen.queryByTestId('player-home-9')).not.toBeInTheDocument()
     openBench()
     expect(screen.getAllByTestId('player-home-4')).toHaveLength(1)
-    expect(screen.getByRole('button', { name: 'All replacements' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Hide full bench' })).toHaveAttribute('aria-expanded', 'true')
     expect(tile('home-5')).toBeEnabled()
     expect(tile('home-9')).toBeEnabled()
     expect(screen.queryByText('Long enough rest')).not.toBeInTheDocument()
@@ -267,6 +274,81 @@ describe('minimal operator dashboard', () => {
     await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('substitute', {
       team_id: 'home', outgoing_ids: ['home-1'], incoming_ids: ['home-5'], at_playing_ms: 12777,
     }))
+    // A completed action closes the panel even before the hook delivers a new version.
+    await waitFor(() => expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Hide full bench' })).not.toBeInTheDocument()
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('opens a contextual panel immediately while the existing recommendation request is still pending', async () => {
+    let resolveSuggestions: (result: Suggestions) => void = () => undefined
+    mockedApi.mockImplementationOnce(() => new Promise<Suggestions>(resolve => { resolveSuggestions = resolve }))
+    start()
+    expect(mockedApi).not.toHaveBeenCalled()
+    fireEvent.click(tile('home-1'))
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Finding replacements…')).toBeInTheDocument()
+    expect(within(homeControls()).getByRole('button', { name: 'Show full bench' })).toBeEnabled()
+    expect(within(homeControls()).getByRole('button', { name: 'Move to bench' })).toBeEnabled()
+    expect(within(homeControls()).getByRole('button', { name: 'Send to penalty box' })).toBeEnabled()
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('player-away-4')).not.toBeInTheDocument()
+    await act(async () => resolveSuggestions(suggestions))
+    expect(await screen.findByTestId('player-home-4')).toBeEnabled()
+    expect(screen.queryByText('Finding replacements…')).not.toBeInTheDocument()
+    expect(sendAction).not.toHaveBeenCalled()
+  })
+
+  it('uses the API recommendation order and offers only eligible bench candidates for the selected team', async () => {
+    const snapshot = fixture()
+    snapshot.players.find(player => player.id === 'home-6')!.eligible = false
+    const candidate = (player_id: string, score: number, eligible = true) => ({ player_id, score, eligible, reasons: [], observations: 0 })
+    mockedApi.mockResolvedValue({
+      players: [candidate('home-1', 999), candidate('away-4', 999), candidate('home-6', 999), candidate('home-10', 999, false), candidate('home-5', 1), candidate('home-4', 200), candidate('home-9', 100), candidate('home-12', 300)],
+      groups: [], combinations: [],
+    })
+    start(snapshot)
+    fireEvent.click(tile('home-1'))
+    const ranked = await screen.findByLabelText('Suggested replacements')
+    await waitFor(() => expect(within(ranked).getAllByTestId(/^player-/).map(button => button.getAttribute('data-testid'))).toEqual(['player-home-5', 'player-home-4', 'player-home-9']))
+    expect(screen.queryByTestId('player-away-4')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('player-home-6')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('player-home-10')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('player-home-12')).not.toBeInTheDocument()
+    expect(sendAction).not.toHaveBeenCalled()
+  })
+
+  it('makes every eligible bench player available in configured lines, pairs and goalkeeper groups', async () => {
+    const snapshot = fixture()
+    snapshot.players.find(player => player.id === 'home-6')!.eligible = false
+    start(snapshot)
+    fireEvent.click(tile('home-1'))
+    await screen.findByTestId('player-home-4')
+    openBench()
+    const fullBench = document.getElementById(within(homeControls()).getByRole('button', { name: 'Hide full bench' }).getAttribute('aria-controls')!)!
+    expect(within(fullBench).getAllByTestId(/^player-/).map(button => button.getAttribute('data-testid'))).toEqual(['player-home-4', 'player-home-5', 'player-home-9', 'player-home-10', 'player-home-12'])
+    expect([...fullBench.querySelectorAll('.bench-group-label')].map(label => label.textContent)).toEqual(['F2', 'D2', 'GK'])
+    expect(screen.getAllByTestId('player-home-4')).toHaveLength(1)
+    expect(screen.queryByTestId('player-home-6')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('player-away-4')).not.toBeInTheDocument()
+    fireEvent.click(within(homeControls()).getByRole('button', { name: 'Hide full bench' }))
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(tile('home-4')).toHaveClass('suggested-player')
+    expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument()
+  })
+
+  it('keeps the full bench usable when the recommendation service is unavailable', async () => {
+    mockedApi.mockRejectedValue(new Error('Suggestion request failed'))
+    start()
+    fireEvent.click(tile('home-1'))
+    expect(await screen.findByText('Suggestions unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('Finding replacements…')).not.toBeInTheDocument()
+    openBench()
+    fireEvent.click(tile('home-9'))
+    await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('substitute', {
+      team_id: 'home', outgoing_ids: ['home-1'], incoming_ids: ['home-9'], at_playing_ms: 12777,
+    }))
+    await waitFor(() => expect(screen.queryByTestId('player-home-9')).not.toBeInTheDocument())
   })
 
   it.each([
@@ -279,6 +361,8 @@ describe('minimal operator dashboard', () => {
     await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('substitute', {
       team_id: 'home', outgoing_ids: outgoing, incoming_ids: incoming, at_playing_ms: 12777,
     }))
+    await waitFor(() => expect(within(homeControls()).getByRole('button', { name: 'Lines & pairs' })).toHaveAttribute('aria-expanded', 'false'))
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
   })
 
   it('removes stale forward suggestions immediately when a defensive selection is awaiting new results', async () => {
@@ -291,7 +375,7 @@ describe('minimal operator dashboard', () => {
     selectTeamGroup('Defence')
     expect(screen.queryByRole('button', { name: 'Suggested group 4, 5, 6' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
-    expect(within(homeControls()).getByRole('button', { name: 'All replacements' })).toBeEnabled()
+    expect(within(homeControls()).getByRole('button', { name: 'Show full bench' })).toBeEnabled()
     expect(sendAction).not.toHaveBeenCalled()
     await act(async () => resolveNext({
       players: [], combinations: [],
@@ -401,16 +485,23 @@ describe('minimal operator dashboard', () => {
     await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('substitute', {
       team_id: 'home', outgoing_ids: ['home-1', 'home-7'], incoming_ids: incoming, at_playing_ms: 12777,
     }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Confirm change' })).not.toBeInTheDocument())
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
+    expect(tile('home-7')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  it.each([['To ice', 'ON_ICE'], ['To bench', 'BENCH']] as const)('returns a penalty-box player %s without leaving fullscreen', async (button, destination) => {
+  it.each([['Return to ice', 'ON_ICE'], ['Return to bench', 'BENCH']] as const)('returns a penalty-box player %s without leaving fullscreen', async (button, destination) => {
     const snapshot = fixture()
     snapshot.players.find(player => player.id === 'home-6')!.location = 'PENALTY_BOX'
     start(snapshot)
     await enterOperatorMode()
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
     fireEvent.click(within(homeControls()).getByRole('button', { name: /Number 6, home Fixture Player 6, penalty box/ }))
     fireEvent.click(within(homeControls()).getByRole('button', { name: button }))
     await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('move', { player_id: 'home-6', to: destination }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: button })).not.toBeInTheDocument())
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
     expect(screen.getByTestId('operator-root')).toHaveClass('operator-mode')
   })
 
@@ -418,14 +509,43 @@ describe('minimal operator dashboard', () => {
     start()
     await enterOperatorMode()
     fireEvent.click(tile('home-1'))
-    fireEvent.click(within(homeControls()).getByRole('button', { name: 'To penalty box' }))
+    fireEvent.click(within(homeControls()).getByRole('button', { name: 'Send to penalty box' }))
     await waitFor(() => expect(sendAction).toHaveBeenCalledWith('move', { player_id: 'home-1', to: 'PENALTY_BOX' }))
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(sendAction).toHaveBeenLastCalledWith('undo', {}))
     expect(sendAction).toHaveBeenCalledTimes(2)
   })
 
-  it('cancels a selected outgoing player inline without moving players', () => {
+  it.each([['Control', { ctrlKey: true }], ['Command', { metaKey: true }]])('keeps a failed %s-Z undo context and closes it after a successful retry', async (_name, modifier) => {
+    sendAction.mockResolvedValue(false)
+    start()
+    fireEvent.click(tile('home-1'))
+    await screen.findByTestId('player-home-4')
+    openBench()
+    fireEvent.keyDown(window, { key: 'z', ...modifier })
+    await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('undo', {}))
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(tile('home-5')).toBeInTheDocument()
+    sendAction.mockResolvedValue(true)
+    fireEvent.keyDown(window, { key: 'z', ...modifier })
+    await waitFor(() => expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument())
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
+    expect(sendAction).toHaveBeenCalledTimes(2)
+  })
+
+  it('moves an on-ice player directly to the bench and closes the replacement panel on success', async () => {
+    start()
+    fireEvent.click(tile('home-1'))
+    await screen.findByTestId('player-home-4')
+    openBench()
+    fireEvent.click(within(homeControls()).getByRole('button', { name: 'Move to bench' }))
+    await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('move', { player_id: 'home-1', to: 'BENCH' }))
+    await waitFor(() => expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Move to bench' })).not.toBeInTheDocument()
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('cancels an expanded replacement panel and reselects the same player with suggestions only', async () => {
     start()
     fireEvent.click(tile('home-1'))
     expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
@@ -435,6 +555,10 @@ describe('minimal operator dashboard', () => {
     expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
     expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument()
     expect(sendAction).not.toHaveBeenCalled()
+    fireEvent.click(tile('home-1'))
+    expect(await screen.findByTestId('player-home-4')).toHaveClass('suggested-player')
+    expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument()
+    expect(within(homeControls()).getByRole('button', { name: 'Show full bench' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('disables mutation controls during a pending server update so repeated taps cannot send duplicate changes', async () => {
@@ -465,8 +589,7 @@ describe('minimal operator dashboard', () => {
     const { game, rerender } = start(snapshot)
     fireEvent.click(tile('home-1'))
     openBench()
-    expect(tile('home-4')).toBeDisabled()
-    fireEvent.click(tile('home-4'))
+    expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
     expect(sendAction).not.toHaveBeenCalled()
     game.connection = 'offline'
     rerender(<App />)
@@ -475,18 +598,101 @@ describe('minimal operator dashboard', () => {
     expect(sendAction).not.toHaveBeenCalled()
   })
 
-  it('opens the bench for an independent move and closes it after the authoritative update', async () => {
-    const { game, rerender } = start()
+  it('adds a player directly without an outgoing selection and closes the bench before any snapshot update', async () => {
+    start()
     expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument()
-    openBench()
+    addPlayer()
+    expect(tile('home-4')).toBeEnabled()
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(tile('home-4'))
-    fireEvent.click(within(homeControls()).getByRole('button', { name: 'To ice' }))
     await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('move', { player_id: 'home-4', to: 'ON_ICE' }))
-    game.state = { ...game.state!, version: game.state!.version + 1, players: game.state!.players.map(player => player.id === 'home-4' ? { ...player, location: 'ON_ICE' } : player) }
-    rerender(<App />)
-    expect(tile('home-4')).toHaveClass('on_ice')
+    await waitFor(() => expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument())
     expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument()
-    expect(within(homeControls()).getByRole('button', { name: 'Bench' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(homeControls()).getByRole('button', { name: 'Add player' })).toBeEnabled()
+  })
+
+  it('starts an incoming-only action for one team independently of the other team outgoing selection', async () => {
+    start()
+    fireEvent.click(tile('away-1'))
+    expect(tile('away-1')).toHaveAttribute('aria-pressed', 'true')
+    addPlayer()
+    expect(tile('away-1')).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.queryByText('Finding replacements…')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Move to bench' })).not.toBeInTheDocument()
+    fireEvent.click(tile('home-12'))
+    await waitFor(() => expect(sendAction).toHaveBeenCalledExactlyOnceWith('move', { player_id: 'home-12', to: 'ON_ICE' }))
+    await waitFor(() => expect(screen.queryByTestId('player-home-12')).not.toBeInTheDocument())
+  })
+
+  it('preserves a failed replacement and its expanded bench through a refreshed clock snapshot', async () => {
+    sendAction.mockResolvedValue(false)
+    const { game, rerender } = start()
+    fireEvent.click(tile('home-1'))
+    await screen.findByTestId('player-home-4')
+    openBench()
+    fireEvent.click(tile('home-5'))
+    await waitFor(() => expect(sendAction).toHaveBeenCalledOnce())
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(tile('home-5')).toBeEnabled()
+    expect(within(homeControls()).getByRole('button', { name: 'Hide full bench' })).toHaveAttribute('aria-expanded', 'true')
+    game.state = { ...game.state!, version: game.state!.version + 1, clock: { ...game.state!.clock, remaining_ms: 1187000 } }
+    rerender(<App />)
+    expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')
+    expect(tile('home-5')).toBeEnabled()
+    expect(within(homeControls()).getByRole('button', { name: 'Hide full bench' })).toHaveAttribute('aria-expanded', 'true')
+    sendAction.mockResolvedValue(true)
+    fireEvent.click(tile('home-5'))
+    await waitFor(() => expect(screen.queryByTestId('player-home-5')).not.toBeInTheDocument())
+    expect(sendAction).toHaveBeenCalledTimes(2)
+    expect(sendAction.mock.calls[1]).toEqual(sendAction.mock.calls[0])
+  })
+
+  it('keeps the add-player bench open after an unsuccessful move and closes it after a successful retry', async () => {
+    sendAction.mockResolvedValue(false)
+    start()
+    addPlayer()
+    fireEvent.click(tile('home-4'))
+    await waitFor(() => expect(sendAction).toHaveBeenCalledOnce())
+    expect(tile('home-4')).toBeEnabled()
+    expect(tile('home-5')).toBeInTheDocument()
+    sendAction.mockResolvedValue(true)
+    fireEvent.click(tile('home-4'))
+    await waitFor(() => expect(screen.queryByTestId('player-home-4')).not.toBeInTheDocument())
+    expect(sendAction).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps a failed saved line change open for retry', async () => {
+    sendAction.mockResolvedValue(false)
+    start()
+    changePreset('Forward line 2')
+    await waitFor(() => expect(sendAction).toHaveBeenCalledOnce())
+    expect(within(homeControls()).getByRole('button', { name: 'Lines & pairs' })).toHaveAttribute('aria-expanded', 'true')
+    expect(within(homeControls()).getByRole('button', { name: 'Change Forward line 2' })).toBeEnabled()
+    sendAction.mockResolvedValue(true)
+    fireEvent.click(within(homeControls()).getByRole('button', { name: 'Change Forward line 2' }))
+    await waitFor(() => expect(within(homeControls()).getByRole('button', { name: 'Lines & pairs' })).toHaveAttribute('aria-expanded', 'false'))
+    expect(sendAction).toHaveBeenCalledTimes(2)
+  })
+
+  it('renders a short-handed team and a six-skater empty-net team without assuming six on-ice tiles per team', async () => {
+    const snapshot = fixture()
+    snapshot.players.find(player => player.id === 'home-3')!.location = 'PENALTY_BOX'
+    snapshot.players.find(player => player.id === 'home-8')!.location = 'PENALTY_BOX'
+    snapshot.players.find(player => player.id === 'away-11')!.location = 'BENCH'
+    snapshot.players.find(player => player.id === 'away-4')!.location = 'ON_ICE'
+    const { container, game } = start(snapshot)
+    const before = structuredClone(game.state)
+    expect(within(homeControls()).getAllByTestId(/^player-home-/)).toHaveLength(4)
+    expect(within(screen.getByRole('region', { name: 'Away Fixture team controls' })).getAllByTestId(/^player-away-/)).toHaveLength(6)
+    expect(within(homeControls()).getByText('3 skaters')).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Away Fixture team controls' })).getByText('Empty net')).toBeInTheDocument()
+    expect(within(homeControls()).getByRole('button', { name: /Number 3, home Fixture Player 3, penalty box/ })).toBeInTheDocument()
+    expect(within(homeControls()).getByRole('button', { name: /Number 8, home Fixture Player 8, penalty box/ })).toBeInTheDocument()
+    expect(container.querySelectorAll('.bench-section')).toHaveLength(0)
+    await enterOperatorMode()
+    expect(container.querySelectorAll('.ice-players .player-tile')).toHaveLength(10)
+    expect(game.state).toEqual(before)
+    expect(sendAction).not.toHaveBeenCalled()
   })
 
   it('preserves the expanded alternatives and selected player across fullscreen entry and exit', async () => {
@@ -497,7 +703,7 @@ describe('minimal operator dashboard', () => {
     await enterOperatorMode()
     expect(tile('home-1')).toBe(originalOutgoing)
     expect(tile('home-5')).toBeInTheDocument()
-    expect(within(homeControls()).getByRole('button', { name: 'All replacements' })).toHaveAttribute('aria-expanded', 'true')
+    expect(within(homeControls()).getByRole('button', { name: 'Hide full bench' })).toHaveAttribute('aria-expanded', 'true')
     fireEvent.click(screen.getByTestId('operator-exit'))
     await waitFor(() => expect(screen.getByTestId('operator-root')).not.toHaveClass('operator-mode'))
     expect(tile('home-1')).toHaveAttribute('aria-pressed', 'true')

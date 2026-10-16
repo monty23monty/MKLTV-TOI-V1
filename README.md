@@ -66,7 +66,7 @@ Open [localhost:5173](http://localhost:5173). Vite proxies `/api` and WebSockets
 
 ## Use on an iPad
 
-Use landscape orientation for the two-team operating surface. Portrait orientation stacks the teams to retain comfortable touch targets. During normal play the bench stays hidden; selecting an outgoing player reveals suggested replacements, with the full bench available when needed.
+The iPad layout keeps both teams side by side in landscape and portrait. Portrait uses two rows of on-ice tiles per team to retain comfortable touch targets; smaller phone screens stack the teams. During normal play the bench stays hidden. Selecting an outgoing player reveals suggested replacements, and **Show full bench** opens all eligible alternatives in a bounded, internally scrolling panel.
 
 Keep the server computer and iPad on the same network. With native development running, open `http://<server-LAN-IP>:5173` in Safari; with Docker use `http://<server-LAN-IP>:8080`. Replace the placeholder with the server computer's local network address. `localhost` on the iPad refers to the iPad itself. The development script already listens on the network; API and WebSocket traffic use the frontend's same-origin proxy.
 
@@ -76,9 +76,9 @@ Operator Full Screen uses native fullscreen where Safari permits it and explicit
 
 1. Load the demo or create a match. Open match setup to edit names, jersey numbers, positions, eligibility, starting locations and line presets. Add players or import JSON before tracking; unlisted players remain in the roster, so mark unused players unavailable on the bench.
 2. Start the manual clock at puck drop and pause it at stoppages. A stopped clock contributes no TOI. Clock controls also set countdown, period and period lengths.
-3. Tap an on-ice jersey number, then one of the suggested replacement numbers that appears. **All replacements** opens the complete bench when a different player is needed. Cancel or a successful change returns to the quiet view.
+3. Tap an on-ice jersey number, then one of the suggested replacement numbers that appears. **Show full bench** opens all eligible bench players, grouped by configured forward lines, defensive pairs and goalkeepers. **Move to bench** and **Send to penalty box** act immediately. Cancel or a successful change returns to the quiet view; a failed action keeps its context for retry.
 4. Open **Lines & pairs** for forward/defence selection, named presets and goalkeeper controls. Use **Group select** for arbitrary multi-player changes and confirm once for an atomic operation. Configured special units remain available during group selection.
-5. Use **Bench** when an independent bench-player movement is needed. Selecting a player reveals ice, bench and penalty-box moves. Occupied penalty boxes stay visible; players never return automatically.
+5. Use each team's **Add player** action to bring a bench player onto the ice without selecting an outgoing player. Tap a player in the opened bench to add them immediately. Occupied penalty boxes stay visible above any expansion: tap their jersey number for **Return to ice** or **Return to bench**, without opening the bench. Players never return automatically.
 6. Use Undo for the latest movement. The separate history view provides auditable movement corrections and rebuilds shifts and recommendation learning.
 7. Open Statistics for TOI, completed shifts, averages, per-period totals and individual shift history. Refreshing or reopening the match resumes its persisted state.
 
