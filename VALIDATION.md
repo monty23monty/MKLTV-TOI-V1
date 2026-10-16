@@ -116,3 +116,7 @@ The [Linux container smoke test](https://github.com/monty23monty/MKLTV-TOI-V1/ac
 - Removing and recreating all containers without deleting the PostgreSQL volume preserves the complete game fingerprint; HTTP and WebSockets resume correctly afterward.
 
 Only disposable CI containers/volumes were removed. The workflow publishes no images, so the documented local-image build step is still required on the user's Docker endpoint. The actual Portainer GUI/server was not connected in this session; the deployment instructions were checked against official Portainer documentation. ARM64 execution and physical iPad Safari remain untested.
+
+### Portainer 2.45.0 URL builder correction
+
+After a user reported the default-Dockerfile error with the correct path field, the exact Portainer 2.45.0 source showed that its URL-build query serializer inserts the remote Git URL without escaping `#` before the `dockerfile` parameter. A Node URL-parsing reproduction confirmed that a literal Git fragment removes that parameter from the server-bound query; both a plain `.git` URL and a `%23`-encoded fragment preserve it. `git ls-remote --symref origin HEAD` confirmed `codex/ipad-operator` is the repository's default branch. The guide now uses the plain URL and explains the affected-version workaround. This was a source-level/request-parsing check; a new build on the user's Portainer host has not been observed. No application or image runtime files changed.

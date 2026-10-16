@@ -13,12 +13,16 @@ Open **Images → Build a new image**, use the URL build option/URL field, and b
 | Field | Backend build | Frontend build |
 | --- | --- | --- |
 | Image name/tag | `mkltoi-backend:portainer-v1` | `mkltoi-frontend:portainer-v1` |
-| Git URL | `https://github.com/monty23monty/MKLTV-TOI-V1.git#codex/ipad-operator` | Same URL |
+| Git URL | `https://github.com/monty23monty/MKLTV-TOI-V1.git` | Same URL |
 | Dockerfile path | `Dockerfile.backend` | `Dockerfile.frontend` |
 
-In the URL form, **Dockerfile path is a separate input below the URL**. Replace its `Dockerfile` value with the exact filename above for each build. The repository deliberately has no root file named `Dockerfile`: an error ending in `Cannot locate specified Dockerfile: Dockerfile` means the build is still searching for that default name. If the error keeps naming `Dockerfile` after you enter `Dockerfile.backend` or `Dockerfile.frontend`, use the SSH method below to pass the filename directly to Docker.
+In the URL form, **Dockerfile path is a separate input below the URL**. Replace its `Dockerfile` value with the exact filename above for each build. The repository has no root file named `Dockerfile`.
 
-Use the Git repository URL, including the branch fragment, so the build has the complete source tree for `COPY`. A raw Dockerfile URL alone is insufficient. Leave the frontend build argument `VITE_API_BASE_URL` empty: nginx supplies the same-origin API/WebSocket proxy.
+**Portainer 2.45.0 URL-builder workaround:** do not append a literal `#codex/ipad-operator` to the URL in this form. Its [query serializer](https://github.com/portainer/portainer/blob/2.45.0/app/react/docker/proxy/queries/utils.ts) does not URL-encode values, and its [build request](https://github.com/portainer/portainer/blob/2.45.0/app/react/docker/images/queries/useBuildImageMutation.ts) places the Dockerfile parameter after the Git URL. A literal `#` turns the rest of that request into a browser fragment, so Docker never receives the selected Dockerfile and reports `Cannot locate specified Dockerfile: Dockerfile`, even when the path field is correct. The plain `.git` URL above avoids this and uses the repository's current default branch, `codex/ipad-operator` (verified with `git ls-remote --symref origin HEAD`).
+
+If you need an explicit branch in this affected Portainer form, encode the `#` as `%23`: `https://github.com/monty23monty/MKLTV-TOI-V1.git%23codex/ipad-operator`. This manual encoding applies to Portainer's affected URL input; normal Docker CLI Git-context syntax still uses a literal `#`.
+
+Use the Git repository URL so the build has the complete source tree for `COPY`. A raw Dockerfile URL alone is insufficient. Leave the frontend build argument `VITE_API_BASE_URL` empty: nginx supplies the same-origin API/WebSocket proxy.
 
 Wait for each build to finish successfully and confirm that both tags appear in **Images**. Docker downloads the base images and dependencies during these builds. The target host needs outbound access to GitHub, Docker Hub, PyPI and the npm registry. No registry login is needed for this public repository.
 
@@ -134,6 +138,7 @@ Restoring replaces the target database's application data. Start the backend and
 
 | Symptom | Check |
 | --- | --- |
+| `Cannot locate specified Dockerfile: Dockerfile` despite the correct path field | On Portainer 2.45.0, remove the literal `#codex/ipad-operator` from the Git URL. Use the plain `.git` URL in the build table so the Dockerfile parameter reaches Docker. |
 | `pull access denied` for an application image | Both local images must exist on the selected Docker host with the exact tag. Disable re-pulling them. |
 | Compose reports a missing password/token | Set the two required variables in the stack's Environment variables section. |
 | Backend is unhealthy | Read backend logs for migration/DB connectivity errors; check PostgreSQL health and retained-volume credentials. |
