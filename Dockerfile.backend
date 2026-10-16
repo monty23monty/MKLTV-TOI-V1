@@ -1,0 +1,17 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app/backend
+WORKDIR /app
+COPY backend/requirements.lock.txt backend/requirements.lock.txt
+RUN pip install --no-cache-dir -r backend/requirements.lock.txt
+COPY backend backend
+COPY scripts/start-backend.sh scripts/start-backend.sh
+RUN useradd --create-home --uid 10001 toi \
+    && mkdir -p /app/data \
+    && chown -R toi:toi /app \
+    && chmod +x /app/scripts/start-backend.sh
+USER toi
+EXPOSE 8000
+CMD ["sh", "scripts/start-backend.sh"]

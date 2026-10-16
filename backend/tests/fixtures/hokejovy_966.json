@@ -1,0 +1,424 @@
+{
+  "gameInfo": {
+    "actualTimeName": "end",
+    "actualTimeAlias": "K",
+    "status": "end",
+    "stadium": "Planet Ice Milton Keynes",
+    "numberOfViewers": 2077,
+    "referees": {
+      "headReferee1": "Stephen Matthews",
+      "headReferee2": "Huw Poulton",
+      "lineReferee1": "Joe Childs",
+      "lineReferee2": "Niccolo Bovolenta"
+    },
+    "teamInfo": {
+      "home": {
+        "id": 5,
+        "name": "Milton Keynes Lightning",
+        "shortcut": "MKL"
+      },
+      "visitor": {
+        "id": 37,
+        "name": "Solway IHC",
+        "shortcut": "SOL"
+      }
+    },
+    "trainers": {
+      "homeHeadCoach": "Russell Pete",
+      "visitorHeadCoach": "Grubb Martin"
+    },
+    "teamBilance": {
+      "homeWin": 3,
+      "visitorWin": 2
+    },
+    "results": {
+      "extra_time": false,
+      "shooting": false,
+      "contumacy": false,
+      "score": {
+        "final": {
+          "score_home": 5,
+          "score_guest": 4
+        },
+        "first_period": {
+          "score_home": 1,
+          "score_guest": 1
+        },
+        "second_period": {
+          "score_home": 2,
+          "score_guest": 1
+        },
+        "third_period": {
+          "score_home": 2,
+          "score_guest": 2
+        }
+      }
+    }
+  },
+  "roster": {
+    "home": {
+      "101": {
+        "playerId": 90,
+        "matchPlayerId": 48611,
+        "name": "Jordan",
+        "surname": "Hedley",
+        "jersey": 1,
+        "position": "GK",
+        "startingSix": true,
+        "roster": "101"
+      },
+      "102": {
+        "playerId": 547,
+        "matchPlayerId": 48637,
+        "name": "Joel",
+        "surname": "Bearman",
+        "jersey": 2,
+        "position": "GK",
+        "startingSix": false,
+        "roster": "102"
+      },
+      "211": {
+        "playerId": 116,
+        "matchPlayerId": 48624,
+        "name": "Ed",
+        "surname": "Knaggs",
+        "jersey": 25,
+        "position": "DE",
+        "startingSix": true,
+        "roster": "211"
+      },
+      "212": {
+        "playerId": 16,
+        "matchPlayerId": 48617,
+        "name": "Kell",
+        "surname": "Beattie",
+        "jersey": 12,
+        "position": "DE",
+        "startingSix": true,
+        "roster": "212"
+      },
+      "221": {
+        "playerId": 132,
+        "matchPlayerId": 48627,
+        "name": "Milique",
+        "surname": "Martelly",
+        "jersey": 55,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "221"
+      },
+      "222": {
+        "playerId": 549,
+        "matchPlayerId": 48618,
+        "name": "Archie",
+        "surname": "Hazeldine",
+        "jersey": 13,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "222"
+      },
+      "231": {
+        "playerId": 183,
+        "matchPlayerId": 48613,
+        "name": "Archie",
+        "surname": "Salisbury",
+        "jersey": 4,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "231"
+      },
+      "232": {
+        "playerId": 941,
+        "matchPlayerId": 48612,
+        "name": "Jake",
+        "surname": "Hayward",
+        "jersey": 3,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "232"
+      },
+      "311": {
+        "playerId": 968,
+        "matchPlayerId": 48633,
+        "name": "Danny",
+        "surname": "Weight",
+        "jersey": 6,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "311"
+      },
+      "312": {
+        "playerId": 479,
+        "matchPlayerId": 48622,
+        "name": "David",
+        "surname": "Thomson",
+        "jersey": 23,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "312"
+      },
+      "313": {
+        "playerId": 492,
+        "matchPlayerId": 48629,
+        "name": "Sean",
+        "surname": "Norris",
+        "jersey": 86,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "313"
+      },
+      "321": {
+        "playerId": 84,
+        "matchPlayerId": 48623,
+        "name": "Carter",
+        "surname": "Hamill",
+        "jersey": 24,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "321"
+      },
+      "322": {
+        "playerId": 682,
+        "matchPlayerId": 48631,
+        "name": "Liam",
+        "surname": "Stewart",
+        "jersey": 94,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "322"
+      },
+      "323": {
+        "playerId": 925,
+        "matchPlayerId": 48630,
+        "name": "Bradey",
+        "surname": "Johnson",
+        "jersey": 90,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "323"
+      },
+      "331": {
+        "playerId": 208,
+        "matchPlayerId": 48620,
+        "name": "Mack",
+        "surname": "Stewart",
+        "jersey": 16,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "331"
+      },
+      "332": {
+        "playerId": 936,
+        "matchPlayerId": 48628,
+        "name": "Jarred",
+        "surname": "White",
+        "jersey": 73,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "332"
+      },
+      "333": {
+        "playerId": 80,
+        "matchPlayerId": 48616,
+        "name": "Harry",
+        "surname": "Gulliver",
+        "jersey": 11,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "333"
+      },
+      "341": {
+        "playerId": 83,
+        "matchPlayerId": 48614,
+        "name": "Cameron",
+        "surname": "Hamill",
+        "jersey": 7,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "341"
+      },
+      "342": {
+        "playerId": 181,
+        "matchPlayerId": 48615,
+        "name": "Toms",
+        "surname": "Rutkis",
+        "jersey": 10,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "342"
+      }
+    },
+    "visitor": {
+      "101": {
+        "playerId": 943,
+        "matchPlayerId": 48652,
+        "name": "Dershahn",
+        "surname": "Stewart",
+        "jersey": 33,
+        "position": "GK",
+        "startingSix": true,
+        "roster": "101"
+      },
+      "102": {
+        "playerId": 599,
+        "matchPlayerId": 48642,
+        "name": "Harry",
+        "surname": "Campbell",
+        "jersey": 31,
+        "position": "GK",
+        "startingSix": false,
+        "roster": "102"
+      },
+      "211": {
+        "playerId": 9,
+        "matchPlayerId": 48639,
+        "name": "Olivier",
+        "surname": "Arseneau",
+        "jersey": 5,
+        "position": "DE",
+        "startingSix": true,
+        "roster": "211"
+      },
+      "212": {
+        "playerId": 379,
+        "matchPlayerId": 48649,
+        "name": "Josh",
+        "surname": "Saunders",
+        "jersey": 26,
+        "position": "DE",
+        "startingSix": true,
+        "roster": "212"
+      },
+      "221": {
+        "playerId": 207,
+        "matchPlayerId": 48651,
+        "name": "Liam",
+        "surname": "Stenton",
+        "jersey": 10,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "221"
+      },
+      "222": {
+        "playerId": 135,
+        "matchPlayerId": 48646,
+        "name": "Calum",
+        "surname": "McGill",
+        "jersey": 29,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "222"
+      },
+      "231": {
+        "playerId": 171,
+        "matchPlayerId": 48648,
+        "name": "Owen",
+        "surname": "Rae",
+        "jersey": 55,
+        "position": "DE",
+        "startingSix": false,
+        "roster": "231"
+      },
+      "311": {
+        "playerId": 35,
+        "matchPlayerId": 48641,
+        "name": "Jordan",
+        "surname": "Buesa",
+        "jersey": 12,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "311"
+      },
+      "312": {
+        "playerId": 947,
+        "matchPlayerId": 48643,
+        "name": "Owen",
+        "surname": "Cole",
+        "jersey": 19,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "312"
+      },
+      "313": {
+        "playerId": 667,
+        "matchPlayerId": 48654,
+        "name": "Jonathan",
+        "surname": "Yantsis",
+        "jersey": 23,
+        "position": "FW",
+        "startingSix": true,
+        "roster": "313"
+      },
+      "321": {
+        "playerId": 204,
+        "matchPlayerId": 48650,
+        "name": "Duncan",
+        "surname": "Speirs",
+        "jersey": 38,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "321"
+      },
+      "322": {
+        "playerId": 237,
+        "matchPlayerId": 48655,
+        "name": "Lewis",
+        "surname": "Young",
+        "jersey": 14,
+        "position": "CE",
+        "startingSix": false,
+        "roster": "322"
+      },
+      "323": {
+        "playerId": 289,
+        "matchPlayerId": 48638,
+        "name": "Torran",
+        "surname": "Anderson",
+        "jersey": 21,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "323"
+      },
+      "331": {
+        "playerId": 686,
+        "matchPlayerId": 48647,
+        "name": "Dylan",
+        "surname": "Murray",
+        "jersey": 18,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "331"
+      },
+      "332": {
+        "playerId": 95,
+        "matchPlayerId": 48644,
+        "name": "Scott",
+        "surname": "Henderson",
+        "jersey": 89,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "332"
+      },
+      "333": {
+        "playerId": 432,
+        "matchPlayerId": 48640,
+        "name": "Callum",
+        "surname": "Boyd",
+        "jersey": 68,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "333"
+      },
+      "341": {
+        "playerId": 217,
+        "matchPlayerId": 48653,
+        "name": "Bailey",
+        "surname": "Thomson",
+        "jersey": 16,
+        "position": "FW",
+        "startingSix": false,
+        "roster": "341"
+      }
+    }
+  }
+}

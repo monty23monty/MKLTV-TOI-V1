@@ -1,0 +1,36 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+frontend/.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Persisted local games; Docker stores PostgreSQL in a named volume
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend
+node_modules/
+dist/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# Tools and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+artifacts/

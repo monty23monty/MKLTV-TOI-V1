@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-lightning_toi}
+      POSTGRES_USER: ${POSTGRES_USER:-toi}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-toi_local_only}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    environment:
+      TOI_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-toi}:${POSTGRES_PASSWORD:-toi_local_only}@db:5432/${POSTGRES_DB:-lightning_toi}
+      TOI_CORS_ORIGINS: ${TOI_CORS_ORIGINS:-http://localhost:8080}
+      TOI_AUTH_TOKEN: ${TOI_AUTH_TOKEN:-}
+      TOI_OPERATOR_TOKENS: ${TOI_OPERATOR_TOKENS:-}
+      TOI_CLOCK_SOURCE: ${TOI_CLOCK_SOURCE:-manual}
+      TOI_CLOCK_STALE_MS: ${TOI_CLOCK_STALE_MS:-10000}
+      HOKEJOVY_ZAPIS_BASE_URL: ${HOKEJOVY_ZAPIS_BASE_URL:-https://api.hokejovyzapis.cz}
+      HOKEJOVY_ZAPIS_API_PREFIX: ${HOKEJOVY_ZAPIS_API_PREFIX:-/v1/d07ssvctxm}
+      HOKEJOVY_ZAPIS_TIMEOUT_SECONDS: ${HOKEJOVY_ZAPIS_TIMEOUT_SECONDS:-10}
+      HOKEJOVY_ZAPIS_CACHE_TTL_SECONDS: ${HOKEJOVY_ZAPIS_CACHE_TTL_SECONDS:-60}
+      HOKEJOVY_ZAPIS_ALLOWED_HOSTS: ${HOKEJOVY_ZAPIS_ALLOWED_HOSTS:-api.hokejovyzapis.cz}
+    ports:
+      - "127.0.0.1:${TOI_BACKEND_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    ports:
+      - "127.0.0.1:${TOI_FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

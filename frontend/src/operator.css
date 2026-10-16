@@ -1,0 +1,256 @@
+/* The operator layout is scoped to this application root for safe embedding. */
+#lightning-toi-operator {
+  --operator-gap: clamp(8px, 1vw, 18px);
+  --ice-height: clamp(128px, 18vh, 250px);
+  --bench-height: clamp(56px, 7.1vh, 106px);
+  min-height: 100dvh;
+  background: #101113;
+}
+#lightning-toi-operator .app-header { height: 56px; padding: 0 22px; gap: 18px; background: #111214; }
+#lightning-toi-operator .brand { min-width: 186px; font-size: 16px; gap: 8px; color: #d8b95a; }
+#lightning-toi-operator .brand > span { color: #faf9f5; }
+#lightning-toi-operator .app-header nav { gap: 2px; }
+#lightning-toi-operator .app-header nav button { min-height: 44px; padding: 0 13px; font-size: 13px; gap: 7px; }
+#lightning-toi-operator .header-right { min-width: 0; gap: 8px; flex: 1; }
+#lightning-toi-operator .game-picker { position: relative; min-width: 0; max-width: 350px; }
+#lightning-toi-operator .game-picker > button { min-height: 44px; padding: 0 8px; max-width: 100%; gap: 8px; }
+#lightning-toi-operator .game-picker > button strong { font-size: 12px; color: #b4b5b8; }
+#lightning-toi-operator .game-menu { top: 47px; left: auto; right: 0; }
+#lightning-toi-operator .icon-button { min-width: 44px; min-height: 44px; }
+#lightning-toi-operator main { padding: 18px 22px 0; max-width: 2600px; width: 100%; }
+#lightning-toi-operator.live-view { height: 100dvh; display: flex; flex-direction: column; }
+#lightning-toi-operator.live-view > .app-header { flex: 0 0 56px; }
+#lightning-toi-operator.live-view main { padding: 0 18px 18px; display: flex; flex-direction: column; min-height: 0; flex: 1; }
+#lightning-toi-operator .operator-controlbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-height: 78px; padding: 10px 0; }
+#lightning-toi-operator .operator-clock { display: flex; align-items: center; gap: 12px; }
+#lightning-toi-operator .operator-period { display: flex; align-items: baseline; gap: 4px; font-size: 13px; color: #b0b2b7; }
+#lightning-toi-operator .operator-period strong { font-size: 24px; color: #fff; font-weight: 600; }
+#lightning-toi-operator .operator-time { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 6px; }
+#lightning-toi-operator .operator-time strong { font: 600 clamp(32px, 3vw, 48px)/1 'Barlow Condensed', 'Arial Narrow', sans-serif; color: #fff; font-variant-numeric: tabular-nums; letter-spacing: 1px; }
+#lightning-toi-operator .operator-time > span { font-size: 10px; color: #b0b2b7; }
+#lightning-toi-operator .operator-time.running > span { color: #d8b95a; }
+#lightning-toi-operator .clock-toggle { min-height: 44px; height: 44px; min-width: 108px; padding: 0 12px; font-size: 13px; }
+#lightning-toi-operator .operator-actions { display: flex; align-items: center; gap: 9px; }
+#lightning-toi-operator .operator-actions > button { min-height: 44px; }
+#lightning-toi-operator .mode-button { border: 1px solid #3b3c40; background: #202124; padding: 0 13px; font-size: 13px; border-radius: 5px; color: #c9c9ca; }
+#lightning-toi-operator .mode-button.selected { color: #111; background: #d8b95a; border-color: #d8b95a; }
+#lightning-toi-operator .undo-button { min-height: 44px; padding: 0 14px; font-size: 13px; gap: 7px; background: #202124; border-color: #45464a; }
+#lightning-toi-operator .operator-fullscreen { min-height: 44px; font-size: 12px; color: #e4d49b; background: #252319; border-color: #6a5d32; }
+#lightning-toi-operator .teams-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--operator-gap); align-items: stretch; flex: 1; min-height: 0; }
+#lightning-toi-operator .team-panel { display: flex; flex-direction: column; background: #18191c; border: 1px solid #3b3b3e; border-radius: 7px; min-width: 0; min-height: 0; }
+#lightning-toi-operator .team-heading { min-height: 58px; padding: 9px 15px; border-bottom: 1px solid #343538; gap: 10px; }
+#lightning-toi-operator .team-identity { gap: 12px; min-width: 0; }
+#lightning-toi-operator .team-side { color: #9d9da3; font-size: 10px; font-weight: 600; letter-spacing: 1.5px; }
+#lightning-toi-operator .team-identity h2 { display: flex; align-items: center; gap: 13px; font-size: 18px; line-height: 1.15; min-width: 0; font-weight: 600; }
+#lightning-toi-operator .team-identity h2 abbr { text-decoration: none; font-size: 24px; color: #edcf71; font-weight: 700; letter-spacing: 1px; }
+#lightning-toi-operator .team-identity h2 > span { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #e7e7e7; }
+#lightning-toi-operator .lineup-warning-inline { display: flex; align-items: center; gap: 5px; color: #e8c979; font-size: 11px; flex: none; }
+#lightning-toi-operator .ice-section { padding: 12px 14px 10px; background: #1b1d20; }
+#lightning-toi-operator .section-label { display: flex; min-height: 15px; margin: 0 0 8px; font-size: 10px; letter-spacing: 1.5px; color: #b9babe; }
+#lightning-toi-operator .section-label > span:last-child { font-size: inherit; color: inherit; }
+#lightning-toi-operator .ice-players { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 9px; min-height: var(--ice-height); }
+#lightning-toi-operator .player-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; min-width: 0; padding: 22px 4px 10px; border: 1px solid #515257; border-radius: 6px; background: #292b30; box-shadow: none; color: #fff; touch-action: manipulation; }
+#lightning-toi-operator .player-tile.on_ice { min-height: var(--ice-height); background: #303237; border: 1px solid #727278; }
+#lightning-toi-operator .player-tile.on_ice:after { content: none; }
+#lightning-toi-operator .player-tile:not(:disabled):hover { background: #3a3c41; border-color: #a8a9ad; }
+#lightning-toi-operator .tile-position { position: absolute; top: 9px; left: 10px; font-size: 12px; letter-spacing: .8px; font-weight: 600; color: #c8c9cc; }
+#lightning-toi-operator .jersey { font: 600 clamp(56px, 5.3vw, 114px)/.95 'Barlow Condensed', 'Arial Narrow', Impact, sans-serif; color: #fff; letter-spacing: -.6px; margin: 0; }
+#lightning-toi-operator .player-tile.bench { height: var(--bench-height); min-height: 56px; padding: 13px 3px 3px; background: #222327; border-color: #48494f; }
+#lightning-toi-operator .player-tile.bench .jersey { font-size: clamp(32px, 3.1vw, 62px); }
+#lightning-toi-operator .player-tile.bench .tile-position { font-size: 9px; left: 5px; top: 4px; }
+#lightning-toi-operator .player-tile.suggested-player { border: 2px dashed #d8b95a; background: #302c20; }
+#lightning-toi-operator .tile-spark { position: absolute; right: 5px; top: 5px; color: #f6d478; width: auto; height: auto; }
+#lightning-toi-operator .tile-check { position: absolute; left: auto; right: 5px; top: auto; bottom: 5px; display: grid; place-items: center; background: #171713; color: #f6d478; border-radius: 50%; height: 21px; width: 21px; }
+#lightning-toi-operator .player-tile.outgoing-selected,
+#lightning-toi-operator .player-tile.incoming-selected { background: #d8b95a; border: 2px solid #fff0b9; box-shadow: inset 0 0 0 2px #d8b95a; }
+#lightning-toi-operator .player-tile.outgoing-selected .jersey,
+#lightning-toi-operator .player-tile.incoming-selected .jersey,
+#lightning-toi-operator .player-tile.outgoing-selected .tile-position,
+#lightning-toi-operator .player-tile.incoming-selected .tile-position { color: #131415; }
+#lightning-toi-operator .player-tile.focused-player { outline: 2px solid #e8c979; outline-offset: -3px; }
+#lightning-toi-operator .player-tile.unavailable { opacity: .35; border-style: dotted; }
+#lightning-toi-operator .tile-unavailable { position: absolute; right: 5px; bottom: 4px; font-size: 18px; }
+#lightning-toi-operator .quick-select { display: flex; align-items: center; gap: 5px; padding: 2px 14px 8px; background: #1b1d20; }
+#lightning-toi-operator .quick-select > button { min-height: 44px; border: 1px solid #404247; background: #25262b; padding: 0 12px; border-radius: 4px; font-size: 12px; color: #cfcfd2; }
+#lightning-toi-operator .quick-select > button:hover:not(:disabled) { background: #37383d; border-color: #77777c; }
+#lightning-toi-operator .quick-select .goalie-button { margin-left: auto; gap: 6px; display: inline-flex; align-items: center; }
+#lightning-toi-operator .selection-context { display: flex; align-items: center; flex-wrap: wrap; gap: 5px 10px; padding: 4px 14px; min-height: 52px; border-top: 1px solid #625630; border-bottom: 1px solid #625630; background: #27251d; }
+#lightning-toi-operator .selection-summary { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; color: #f0d88f; }
+#lightning-toi-operator .context-cancel { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 44px; min-width: 64px; font-size: 12px; color: #d2c8a7; }
+#lightning-toi-operator .movement-controls { display: flex; align-items: center; gap: 5px; margin: 0 0 0 auto; padding: 0; border: 0; background: none; flex-wrap: wrap; }
+#lightning-toi-operator .movement-controls > button { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; font-size: 12px; padding: 0 9px; border: 1px solid #645c41; border-radius: 4px; color: #ece1be; background: #353125; }
+#lightning-toi-operator .group-suggestions { display: flex; align-items: center; gap: 7px; padding: 0; flex: 1; }
+#lightning-toi-operator .group-suggestions > button { display: flex; align-items: center; gap: 8px; border: 1px dashed #a38b46; background: #353022; border-radius: 4px; min-height: 44px; padding: 0 9px; color: #f4db93; flex: 0 1 auto; }
+#lightning-toi-operator .group-suggestions strong { font-size: 18px; font-family: 'Barlow Condensed', sans-serif; }
+#lightning-toi-operator .confirm-change { min-height: 44px; margin: 0 0 0 auto; padding: 0 12px; font-size: 12px; }
+#lightning-toi-operator .suggestion-failure { color: #bdb7a3; font-size: 11px; width: 100%; padding-bottom: 5px; }
+#lightning-toi-operator .bench-section { padding: 12px 14px; flex: 1; background: #18191c; }
+#lightning-toi-operator .bench-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px 12px; }
+#lightning-toi-operator .bench-group { display: flex; align-items: stretch; gap: 7px; min-width: 0; }
+#lightning-toi-operator .bench-group-label { display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 5px; width: 44px; flex: 0 0 44px; min-height: 56px; border-radius: 4px; background: #202124; border: 1px solid #34353a; font-size: 11px; font-weight: 600; color: #b8babf; padding: 4px; overflow-wrap: anywhere; text-align: center; }
+#lightning-toi-operator button.bench-group-label { color: #e7d18c; border-color: #665b37; }
+#lightning-toi-operator button.bench-group-label:not(:disabled):hover { background: #3a3423; border-color: #d8b95a; }
+#lightning-toi-operator .bench-players { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; min-width: 0; width: 100%; }
+#lightning-toi-operator .penalty-area { display: flex; align-items: center; gap: 12px; border-top: 1px solid #3b3b3f; padding: 7px 14px; min-height: 61px; background: #1d1e21; }
+#lightning-toi-operator .penalty-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
+#lightning-toi-operator .penalty-label strong { font-size: 10px; letter-spacing: .8px; font-weight: 600; color: #b1b1b6; }
+#lightning-toi-operator .penalty-players { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+#lightning-toi-operator .penalty-players > button { min-height: 44px; min-width: 56px; padding: 4px 10px; display: flex; align-items: center; gap: 5px; border: 1px solid #b19750; background: #383122; border-radius: 4px; color: #f8dda1; }
+#lightning-toi-operator .penalty-players > button strong { font: 600 29px/1 'Barlow Condensed', sans-serif; }
+#lightning-toi-operator .penalty-players > button.selected { outline: 2px solid #f6da80; outline-offset: -2px; }
+#lightning-toi-operator .penalty-empty { color: #7f8087; font-size: 15px; }
+#lightning-toi-operator .empty-ice { display: grid; place-items: center; grid-column: 1 / -1; min-height: var(--ice-height); font-size: 13px; color: #9c9da4; }
+#lightning-toi-operator .focus-layout-note { color: #aaa79c; font-size: 11px; padding: 0 0 8px; }
+#lightning-toi-operator .saving-indicator { position: fixed; left: 50%; bottom: 12px; display: flex; gap: 6px; align-items: center; background: #1d1e21; border: 1px solid #686044; color: #e4d18d; padding: 6px 12px; border-radius: 20px; font-size: 11px; z-index: 20; transform: translateX(-50%); pointer-events: none; }
+#lightning-toi-operator .error-banner,
+#lightning-toi-operator .warning-banner,
+#lightning-toi-operator .warnings { margin: 0 0 9px; padding: 8px 12px; min-height: 36px; font-size: 12px; line-height: 1.35; }
+#lightning-toi-operator .toast { bottom: 16px; max-width: calc(100vw - 30px); pointer-events: none; }
+#lightning-toi-operator .activity-panel { margin-top: 0; }
+#lightning-toi-operator .page-title { min-height: 50px; margin-bottom: 18px; }
+#lightning-toi-operator .page-title h1 { margin: 0; }
+#lightning-toi-operator .modal-backdrop { overflow: auto; padding: 16px; }
+#lightning-toi-operator .modal { max-height: calc(100dvh - 32px); overflow: auto; }
+#lightning-toi-operator .modal button { min-height: 44px; }
+#lightning-toi-operator.operator-mode { position: fixed; inset: 0; z-index: 90; height: 100dvh; overflow: auto; background: #101113; }
+#lightning-toi-operator.operator-mode main { max-width: none; padding: 0 12px 12px; }
+#lightning-toi-operator.operator-mode .operator-controlbar { min-height: 70px; padding: 8px 0; }
+#lightning-toi-operator.operator-mode .team-panel { min-height: 0; }
+#lightning-toi-operator:fullscreen { width: 100vw; height: 100dvh; }
+#lightning-toi-operator.compact { --ice-height: clamp(120px, 16vh, 220px); --bench-height: clamp(56px, 6.5vh, 94px); }
+#lightning-toi-operator.compact .team-heading { min-height: 48px; padding-top: 5px; padding-bottom: 5px; }
+#lightning-toi-operator.compact .ice-section,
+#lightning-toi-operator.compact .bench-section { padding-top: 8px; padding-bottom: 8px; }
+@media (min-width: 2000px) {
+  #lightning-toi-operator { --ice-height: 22vh; --bench-height: 8vh; }
+  #lightning-toi-operator .team-heading { min-height: 72px; }
+  #lightning-toi-operator .team-identity h2 > span { font-size: 20px; }
+  #lightning-toi-operator .team-identity h2 abbr { font-size: 30px; }
+  #lightning-toi-operator .bench-groups { gap: 15px; }
+  #lightning-toi-operator .bench-section { padding-top: 18px; }
+}
+@media (max-width: 1399px) {
+  #lightning-toi-operator .app-header { padding: 0 14px; gap: 10px; }
+  #lightning-toi-operator .brand { min-width: 158px; font-size: 14px; }
+  #lightning-toi-operator .app-header nav button { padding: 0 10px; gap: 5px; font-size: 12px; }
+  #lightning-toi-operator .game-picker { max-width: 270px; }
+  #lightning-toi-operator.live-view main { padding: 0 12px 12px; }
+  #lightning-toi-operator .operator-controlbar { min-height: 66px; padding: 7px 0; }
+  #lightning-toi-operator .team-panel { min-height: 0; }
+  #lightning-toi-operator .team-heading { min-height: 48px; padding: 8px 10px; }
+  #lightning-toi-operator .team-identity { gap: 8px; }
+  #lightning-toi-operator .team-identity h2 { gap: 8px; }
+  #lightning-toi-operator .team-identity h2 > span { font-size: 12px; }
+  #lightning-toi-operator .team-identity h2 abbr { font-size: 20px; }
+  #lightning-toi-operator .ice-section { padding: 9px 10px 8px; }
+  #lightning-toi-operator .ice-players { gap: 6px; }
+  #lightning-toi-operator .quick-select { padding: 0 10px 8px; gap: 4px; }
+  #lightning-toi-operator .quick-select > button { padding: 0 9px; font-size: 11px; }
+  #lightning-toi-operator .bench-section { padding: 9px 10px; }
+  #lightning-toi-operator .bench-groups { gap: 7px 9px; }
+  #lightning-toi-operator .bench-group { gap: 5px; }
+  #lightning-toi-operator .bench-players { gap: 4px; }
+  #lightning-toi-operator .selection-context { padding: 3px 10px; gap: 4px 8px; }
+  #lightning-toi-operator .selection-summary { font-size: 12px; gap: 5px; }
+  #lightning-toi-operator .movement-controls { gap: 4px; }
+  #lightning-toi-operator .movement-controls > button { padding: 0 7px; font-size: 11px; }
+  #lightning-toi-operator .penalty-area { padding: 6px 10px; min-height: 58px; }
+}
+@media (max-width: 1100px) {
+  #lightning-toi-operator .brand { min-width: 140px; font-size: 13px; }
+  #lightning-toi-operator .app-header nav button svg { display: none; }
+  #lightning-toi-operator .game-picker { max-width: 220px; }
+  #lightning-toi-operator .operator-clock { gap: 8px; }
+  #lightning-toi-operator .operator-time { gap: 6px; padding: 0 3px; }
+  #lightning-toi-operator .operator-time > span { display: none; }
+  #lightning-toi-operator .operator-actions { gap: 6px; }
+  #lightning-toi-operator .mode-button { padding: 0 9px; font-size: 11px; }
+  #lightning-toi-operator .operator-fullscreen { font-size: 11px; padding: 0 9px; gap: 6px; }
+  #lightning-toi-operator .team-identity h2 > span { display: none; }
+  #lightning-toi-operator .quick-select > button { padding: 0 7px; font-size: 10px; }
+  #lightning-toi-operator .quick-select .goalie-button { gap: 4px; }
+  #lightning-toi-operator .bench-group-label { width: 44px; flex-basis: 44px; font-size: 10px; }
+  #lightning-toi-operator .tile-position { top: 7px; left: 7px; font-size: 10px; }
+  #lightning-toi-operator .player-tile.bench .jersey { font-size: 32px; }
+  #lightning-toi-operator .group-suggestions { flex-wrap: wrap; }
+}
+@media (max-width: 900px) {
+  #lightning-toi-operator .app-header { flex-wrap: wrap; height: auto; min-height: 54px; padding: 4px 10px; }
+  #lightning-toi-operator .brand { min-width: 0; }
+  #lightning-toi-operator .header-right { flex: 1; }
+  #lightning-toi-operator .app-header nav { order: 3; width: 100%; justify-content: center; }
+  #lightning-toi-operator .app-header nav button { flex: 1; justify-content: center; }
+  #lightning-toi-operator .operator-controlbar { flex-wrap: wrap; gap: 7px; }
+  #lightning-toi-operator .operator-clock { flex: 1; }
+  #lightning-toi-operator .operator-actions { flex: 1; justify-content: flex-end; }
+  #lightning-toi-operator.live-view { height: auto; }
+  #lightning-toi-operator.operator-mode.live-view { height: 100dvh; }
+  #lightning-toi-operator.live-view main { min-height: auto; }
+  #lightning-toi-operator.live-view > .app-header { flex-basis: auto; }
+  #lightning-toi-operator .teams-grid { grid-template-columns: minmax(0, 1fr); min-height: auto; }
+  #lightning-toi-operator .team-panel,
+  #lightning-toi-operator.operator-mode .team-panel { min-height: 0; }
+  #lightning-toi-operator .ice-players { min-height: 130px; }
+  #lightning-toi-operator .player-tile.on_ice { min-height: 130px; }
+  #lightning-toi-operator .jersey { font-size: 58px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #lightning-toi-operator button { transition: none; }
+}
+
+#lightning-toi-operator .selection-context { position: relative; }
+#lightning-toi-operator .special-units { position: static; flex: 0 0 auto; }
+#lightning-toi-operator .special-units summary { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 11px; list-style: none; border: 1px solid #70613b; border-radius: 4px; background: #353022; color: #f0dca0; font-size: 12px; cursor: pointer; touch-action: manipulation; }
+#lightning-toi-operator .special-units summary::-webkit-details-marker { display: none; }
+#lightning-toi-operator .special-units summary:focus-visible { outline: 2px solid #d8b95a; outline-offset: 3px; }
+#lightning-toi-operator .special-unit-menu { position: absolute; top: calc(100% + 5px); right: 14px; z-index: 25; display: flex; flex-direction: column; gap: 5px; width: min(340px, calc(100% - 28px)); max-height: 320px; overflow: auto; padding: 7px; background: #25231d; border: 1px solid #8c7944; border-radius: 5px; box-shadow: 0 8px 24px #0008; }
+#lightning-toi-operator .special-unit-menu button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 9px; min-height: 56px; padding: 8px 10px; border: 1px solid #655b40; border-radius: 4px; background: #353126; text-align: left; }
+#lightning-toi-operator .special-unit-menu button strong { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+#lightning-toi-operator .special-unit-menu button span { grid-row: 2; font-size: 12px; color: #d5c496; }
+#lightning-toi-operator .special-unit-menu button svg { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+#lightning-toi-operator .special-unit-menu button:hover:not(:disabled) { background: #48402c; border-color: #d8b95a; }
+
+@media (min-height: 900px) and (min-width: 901px) {
+  #lightning-toi-operator:not(.compact) { --bench-height: clamp(90px, 11vh, 160px); }
+}
+
+/* Resting controls show the ice; replacements appear only for the selected change. */
+#lightning-toi-operator { --ice-height: clamp(140px, 26vh, 300px); }
+#lightning-toi-operator .teams-grid { flex: 0 0 auto; align-items: start; }
+#lightning-toi-operator .team-panel { overflow: visible; }
+#lightning-toi-operator .team-heading { border-radius: 7px 7px 0 0; }
+#lightning-toi-operator .quick-select { position: relative; padding-bottom: 10px; gap: 8px; border-radius: 0 0 7px 7px; }
+#lightning-toi-operator .quick-select > button { display: inline-flex; align-items: center; gap: 9px; font-size: 12px; }
+#lightning-toi-operator .quick-select > button[aria-expanded=true] { border-color: #d8b95a; color: #f3d88e; background: #353021; }
+#lightning-toi-operator .line-menu { position: absolute; top: calc(100% - 4px); left: 14px; z-index: 30; width: min(370px, calc(100% - 28px)); max-height: min(450px, 60dvh); overflow: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid #76653a; border-radius: 5px; background: #23221e; box-shadow: 0 8px 24px #0009; }
+#lightning-toi-operator .line-menu-kinds { display: flex; gap: 5px; }
+#lightning-toi-operator .line-menu-kinds button { flex: 1; min-height: 44px; border: 1px solid #686046; background: #363227; border-radius: 4px; font-size: 12px; }
+#lightning-toi-operator .line-menu-preset { display: grid; grid-template-columns: minmax(0, 1fr) auto; min-height: 56px; gap: 5px 10px; padding: 8px 10px; background: #30302c; border: 1px solid #5b5748; border-radius: 4px; text-align: left; }
+#lightning-toi-operator .line-menu-preset strong { font-size: 12px; font-weight: 600; }
+#lightning-toi-operator .line-menu-preset span { grid-row: 2; color: #c9bd98; font-size: 12px; }
+#lightning-toi-operator .line-menu-preset svg { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+#lightning-toi-operator .line-menu .goalie-button { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px; min-height: 44px; border: 1px solid #5b5748; border-radius: 4px; background: #30302c; font-size: 12px; }
+#lightning-toi-operator .line-menu button:hover:not(:disabled) { background: #454033; border-color: #a28e50; }
+#lightning-toi-operator .immediate-replacements { display: grid; grid-template-columns: repeat(3, minmax(0, 110px)); gap: 9px; min-height: 108px; padding: 12px 14px; }
+#lightning-toi-operator .immediate-replacements .player-tile { min-height: 88px; height: 100%; }
+#lightning-toi-operator .immediate-replacements .jersey { font-size: 52px; }
+#lightning-toi-operator .immediate-replacements .tile-position { font-size: 10px; top: 6px; left: 7px; }
+#lightning-toi-operator .replacement-loading { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #b9b5a7; grid-column: 1 / -1; align-self: start; padding: 8px 0; }
+#lightning-toi-operator .bench-section { flex: 0 0 auto; border-top: 1px solid #3e3c32; }
+#lightning-toi-operator .penalty-area { border-radius: 0 0 7px 7px; }
+@media (max-width: 1399px) and (min-width: 901px) {
+  #lightning-toi-operator { --ice-height: clamp(140px, 24vh, 240px); }
+  #lightning-toi-operator .immediate-replacements { min-height: 96px; padding: 9px 10px; }
+  #lightning-toi-operator .immediate-replacements .player-tile { min-height: 78px; }
+}
+@media (max-width: 900px) {
+  #lightning-toi-operator { --ice-height: clamp(124px, 15vh, 180px); }
+  #lightning-toi-operator .ice-players { min-height: var(--ice-height); }
+  #lightning-toi-operator .player-tile.on_ice { min-height: var(--ice-height); }
+  #lightning-toi-operator .jersey { font-size: 66px; }
+  #lightning-toi-operator .immediate-replacements { min-height: 92px; padding: 8px 10px; }
+  #lightning-toi-operator .immediate-replacements .player-tile { min-height: 76px; }
+  #lightning-toi-operator .immediate-replacements .jersey { font-size: 44px; }
+}
+#lightning-toi-operator .player-tile.outgoing-selected:not(:disabled):hover,
+#lightning-toi-operator .player-tile.incoming-selected:not(:disabled):hover { background: #d8b95a; border-color: #fff0b9; }
