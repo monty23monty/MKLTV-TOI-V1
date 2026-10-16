@@ -43,6 +43,8 @@ Replace the example address with **your Linux Docker host's LAN IP**. For HTTPS 
 
 The backend applies database migrations at startup and creates a demonstration match only if it is absent. One worker is intentional: live WebSocket notifications currently use an in-process bus. Keep the backend at one replica.
 
+A first deployment creates a new server database. Your local development SQLite file is not copied into the images; existing local training sessions are not automatically transferred to PostgreSQL.
+
 The stack uses a named volume, so it does not require Portainer's Business Edition relative bind-mount feature. This file is for Docker Standalone, not a Swarm or Kubernetes deployment.
 
 ## 3. Open it on the iPad
@@ -140,3 +142,5 @@ Restoring replaces the target database's application data. Start the backend and
 | Port 8080 is already used | Choose another `TOI_FRONTEND_PORT` and update the dashboard URL/origin. |
 
 The repository's **Linux container smoke test** builds both images, deploys this image-only stack with PostgreSQL, exercises nginx/API/WebSocket/authentication and tracking, and checks persistence across container recreation. It publishes no container images. The workflow's result is available under the repository's **Actions** tab; deployment on your own Portainer host still needs the image-build steps above.
+
+The initial Linux run passed: [container stack smoke test](https://github.com/monty23monty/MKLTV-TOI-V1/actions/runs/38946708889).

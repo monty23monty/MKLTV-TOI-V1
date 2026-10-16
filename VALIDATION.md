@@ -41,7 +41,7 @@ Both teams stayed side by side. At **1920×1080**, the complete rosters and pena
 
 ## Limits of this validation
 
-Docker is not installed on this host. Container image builds, nginx runtime proxying and a running PostgreSQL deployment have **not** been executed here. The native application and automated persistence/concurrency tests used SQLite. Compose/Dockerfiles and the PostgreSQL-compatible SQLAlchemy/Alembic path are supplied for deployment validation on a Docker host.
+Docker is not installed on the local Windows host. The original native application and automated persistence/concurrency tests used SQLite. The later Linux container CI run recorded below now verifies Docker builds, nginx and a running PostgreSQL deployment.
 
 Production identity integration, multi-worker pub/sub, formal penalty enforcement, authoritative strength-classified TOI, actual OCR-clock integration and direct vMix output remain documented extension points. The standalone manual clock, imported rosters, tracking, recommendations and persisted statistics work without continued access to the external roster API.
 
@@ -98,3 +98,21 @@ Actual browser checks at **1024×768 landscape** measured zero idle bench tiles 
 Before movement testing, expanding/collapsing panels and changing display modes preserved imported-match version **30**, elapsed playing time **34,400 ms**, summed TOI **411,486 ms**, and SHA-256 digest `45789d9b03324517704317af8777540637e1c1d86f5fefbc23fa34fe3e7bb4c4` of players, shifts, events and clock values.
 
 On the separate paused training match, exercised Add player without an outgoing selection, five/six/seven-player lineups, both penalty returns without bench expansion, Move to bench, a suggested two-tap substitution, a complete forward-line preset, automatic panel closure, and Undo. All test movements were undone to restore the starting lineup. At 1024×768, a seven-player lineup retained touch targets at least **62 px** wide and its expanded bench remained within the viewport. Physical iPad/Safari hardware remains unavailable; these were actual browser viewport checks. Local screenshots are saved under the ignored `artifacts/` directory.
+
+## Linux Portainer stack validation
+
+[compose.portainer.yaml](compose.portainer.yaml) is an image-only stack for Linux Docker Standalone. [PORTAINER.md](PORTAINER.md) documents building both local images in Portainer, deploying through its Web editor, required secrets/origins, iPad access, updates and backups. Database and backend ports are private, PostgreSQL uses a named volume, and nginx refreshes Docker service DNS after backend recreation.
+
+Native checks after the deployment changes: **253 backend tests passed**, including 22 PostgreSQL configuration cases; Ruff passed; both Compose files and the workflow parsed successfully. Discrete database credentials round-trip reserved URL characters, spaces and Unicode through SQLAlchemy, while explicit database URLs and native SQLite defaults remain supported.
+
+The [Linux container smoke test](https://github.com/monty23monty/MKLTV-TOI-V1/actions/runs/38946708889) passed for runtime commit `2dffac6e2687f7281936cb2519fbc443f2b9137d` on GitHub's Ubuntu runner. It verified:
+
+- Both production images build from the checked-in Dockerfiles and locked dependencies, including the frontend TypeScript/Vite build.
+- Docker Compose validates the image-only stack and all three services become healthy with PostgreSQL 17.
+- A database password containing `@`, `:`, `/`, `?`, `#`, `%` and `$` connects successfully.
+- nginx serves HTML and built JavaScript, and forwards health/OpenAPI/API paths with query strings.
+- Unauthenticated HTTP and WebSockets are rejected; authenticated API, recommendations and WebSocket snapshots work through nginx.
+- A paused substitution changes locations and broadcasts the matching version; Undo restores the lineup without accruing playing time or TOI, while retaining event history.
+- Removing and recreating all containers without deleting the PostgreSQL volume preserves the complete game fingerprint; HTTP and WebSockets resume correctly afterward.
+
+Only disposable CI containers/volumes were removed. The workflow publishes no images, so the documented local-image build step is still required on the user's Docker endpoint. The actual Portainer GUI/server was not connected in this session; the deployment instructions were checked against official Portainer documentation. ARM64 execution and physical iPad Safari remain untested.
