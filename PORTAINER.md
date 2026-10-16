@@ -26,6 +26,21 @@ Use the Git repository URL so the build has the complete source tree for `COPY`.
 
 Wait for each build to finish successfully and confirm that both tags appear in **Images**. Docker downloads the base images and dependencies during these builds. The target host needs outbound access to GitHub, Docker Hub, PyPI and the npm registry. No registry login is needed for this public repository.
 
+### Check or apply the local tags
+
+Use the final image ID printed after `Successfully built` at the end of each build's Output, not an earlier build-layer ID. The frontend's final stage uses nginx; its Node build stage can remain as a separate untagged intermediate image.
+
+Open the completed image under **Images**. Existing names appear in the **Image tags** section. The blank **Tag the image** input is a form for adding a tag and is not a list of current tags ([Portainer 2.45.0 image-details source](https://github.com/portainer/portainer/blob/2.45.0/app/docker/views/images/edit/image.html)). If the required name is absent, enter `mkltoi-backend:portainer-v1` for the completed backend or `mkltoi-frontend:portainer-v1` for the completed frontend in that form and click **Tag**. This creates a local tag; pushing to Docker Hub is unnecessary.
+
+Apply tags in the same Docker environment/node that will run the stack. With shell access to that Docker host, the equivalent is `docker image tag COMPLETED-IMAGE-ID REQUIRED-NAME:TAG`. Verify the actual local names there before deploying:
+
+```bash
+docker image inspect mkltoi-backend:portainer-v1 --format '{{.Id}} {{json .RepoTags}}'
+docker image inspect mkltoi-frontend:portainer-v1 --format '{{.Id}} {{json .RepoTags}}'
+```
+
+If a completed image ID is absent on that host, tagging cannot transfer it between Docker hosts. Build on the deployment host, or transfer the image using a registry or Docker save/load. Keep **Re-pull image** disabled for this local-image stack.
+
 These steps follow [Portainer's image build workflow](https://docs.portainer.io/user/docker/images/build) and [Docker's Git-context branch syntax](https://docs.docker.com/build/concepts/context/#url-fragments). If your Portainer/Docker combination does not support the URL builder, use the SSH method below.
 
 ## 2. Create the stack
