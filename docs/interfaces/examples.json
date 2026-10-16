@@ -1,0 +1,2962 @@
+{
+  "status": "DESIGN_ONLY",
+  "protocol": 2,
+  "description": "Independent proposed wire examples, not a single session transcript and not evidence of implemented endpoints. State/tick examples use a deliberately reduced fictional four-player match for readability; actual snapshots contain every rostered player. Full-line command examples independently illustrate payload structure and are not commands applied to that reduced match. TOI is computed with the current domain. Cursors are explanatory opaque placeholders, never production tokens.",
+  "valid": [
+    {
+      "name": "open-live-session",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "session.open",
+        "message_id": "00000000-0000-4000-8000-000000000001",
+        "game_id": "demo",
+        "data": {
+          "client_id": "graphics-bridge",
+          "journal_mode": "now",
+          "tick_hz": 5
+        }
+      }
+    },
+    {
+      "name": "open-journal-from-beginning",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "session.open",
+        "message_id": "00000000-0000-4000-8000-000000000002",
+        "game_id": "demo",
+        "data": {
+          "client_id": "archive-bridge",
+          "journal_mode": "beginning",
+          "tick_hz": 0
+        }
+      }
+    },
+    {
+      "name": "resume-after-durably-processed-cursor",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "session.open",
+        "message_id": "00000000-0000-4000-8000-000000000003",
+        "game_id": "demo",
+        "data": {
+          "client_id": "archive-bridge",
+          "journal_mode": "resume",
+          "after_cursor": "example-demo-generation1-position40",
+          "tick_hz": 0
+        }
+      }
+    },
+    {
+      "name": "welcome-capabilities-and-zero-position",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "session.welcome",
+        "message_id": "00000000-0000-4000-8000-000000000004",
+        "game_id": "demo",
+        "data": {
+          "client_id": "graphics-bridge",
+          "permissions": [
+            "stream:read",
+            "journal:read",
+            "players:write"
+          ],
+          "journal_generation": "30000000-0000-4000-8000-000000000001",
+          "oldest_cursor": "example-demo-generation1-position0",
+          "high_water_cursor": "example-demo-generation1-position40",
+          "heartbeat_interval_ms": 15000,
+          "pong_timeout_ms": 5000,
+          "max_command_bytes": 65536,
+          "max_server_message_bytes": 1048576,
+          "max_in_flight_commands": 1,
+          "auth_expires_at_ms": 1792188060000,
+          "tick_hz": 5,
+          "connection_expires_at_ms": 1792188060000,
+          "queue_max_messages": 128,
+          "queue_max_bytes": 8388608,
+          "send_timeout_ms": 5000,
+          "journal_retention_days": 7,
+          "rate_limits": {
+            "commands_per_second": 10,
+            "commands_burst": 20,
+            "clock_observations_per_second": 2,
+            "clock_observations_burst": 5
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 1,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "initial-two-team-lineup-and-TOI",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "state.snapshot",
+        "message_id": "00000000-0000-4000-8000-000000000005",
+        "game_id": "demo",
+        "data": {
+          "reason": "initial",
+          "baseline_cursor": "example-demo-generation1-position40",
+          "version": 40,
+          "state": {
+            "version": 40,
+            "game": {
+              "id": "demo",
+              "name": "Milton Keynes Storm vs Northbank Wolves",
+              "status": "LIVE",
+              "competition": "Demonstration · fictional rosters",
+              "scheduled_start": null,
+              "external_id": null,
+              "period_lengths_ms": [
+                1200000,
+                1200000,
+                1200000
+              ]
+            },
+            "teams": [
+              {
+                "id": "demo-home",
+                "name": "Milton Keynes Storm",
+                "short_name": "MKS",
+                "color": "#D8B95A",
+                "side": "home",
+                "external_id": null
+              },
+              {
+                "id": "demo-away",
+                "name": "Northbank Wolves",
+                "short_name": "NBW",
+                "color": "#76A9D5",
+                "side": "away",
+                "external_id": null
+              }
+            ],
+            "players": [
+              {
+                "id": "demo-home-p02",
+                "team_id": "demo-home",
+                "name": "Theo Bennett",
+                "number": 17,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 60000,
+                "current_shift_ms": 60000,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-home-p05",
+                "team_id": "demo-home",
+                "name": "Noah Ellis",
+                "number": 18,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p02",
+                "team_id": "demo-away",
+                "name": "Oscar Hayes",
+                "number": 19,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 60000,
+                "current_shift_ms": 60000,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p05",
+                "team_id": "demo-away",
+                "name": "Archie Blake",
+                "number": 26,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              }
+            ],
+            "lines": [],
+            "clock": {
+              "period": 1,
+              "remaining_ms": 1140000,
+              "running": true,
+              "playing_ms": 60000,
+              "anchor_unix_ms": 1792184460000,
+              "period_playing_ms": {
+                "1": 60000
+              },
+              "period_spans": [
+                {
+                  "period": 1,
+                  "start_playing_ms": 0,
+                  "end_playing_ms": 60000
+                }
+              ]
+            },
+            "warnings": [
+              "MKS: 1 skaters on ice; verify the lineup.",
+              "MKS: empty net.",
+              "NBW: 1 skaters on ice; verify the lineup.",
+              "NBW: empty net."
+            ],
+            "strengths": {
+              "home": 1,
+              "away": 1
+            },
+            "clock_authority": {
+              "mode": "manual",
+              "generation": 0,
+              "source": null,
+              "service_id": null,
+              "last_source_sequence": 0,
+              "feed_status": "manual",
+              "observed_at_ms": null,
+              "stale_at_ms": null
+            },
+            "sampled_at_ms": 1792184460000,
+            "sample_seq": 60000,
+            "on_ice": {
+              "home": [
+                "demo-home-p02"
+              ],
+              "away": [
+                "demo-away-p02"
+              ]
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 2,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "ready-after-initial-baseline",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "stream.ready",
+        "message_id": "00000000-0000-4000-8000-000000000006",
+        "game_id": "demo",
+        "data": {
+          "through_cursor": "example-demo-generation1-position40",
+          "version": 40
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 3,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "single-player-substitution-command",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000007",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "expected_version": 40,
+          "command": {
+            "type": "substitute",
+            "payload": {
+              "team_id": "demo-home",
+              "outgoing_ids": [
+                "demo-home-p02"
+              ],
+              "incoming_ids": [
+                "demo-home-p05"
+              ],
+              "at_playing_ms": 60000
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "full-forward-line-payload-example",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000008",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000010",
+          "expected_version": 40,
+          "command": {
+            "type": "substitute",
+            "payload": {
+              "team_id": "demo-home",
+              "outgoing_ids": [
+                "demo-home-p01",
+                "demo-home-p02",
+                "demo-home-p03"
+              ],
+              "incoming_ids": [
+                "demo-home-p04",
+                "demo-home-p05",
+                "demo-home-p06"
+              ],
+              "at_playing_ms": 60000
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "committed-lineup-journal-record",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "event.recorded",
+        "message_id": "00000000-0000-4000-8000-000000000009",
+        "game_id": "demo",
+        "data": {
+          "replay": false,
+          "record": {
+            "event_id": "50000000-0000-4000-8000-000000000001",
+            "journal_generation": "30000000-0000-4000-8000-000000000001",
+            "journal_seq": 41,
+            "cursor": "example-demo-generation1-position41",
+            "version": 41,
+            "kind": "substitution.updated",
+            "request_id": "40000000-0000-4000-8000-000000000001",
+            "actor": "operator-home",
+            "recorded_at_ms": 1792184460000,
+            "command": {
+              "type": "substitute",
+              "payload": {
+                "team_id": "demo-home",
+                "outgoing_ids": [
+                  "demo-home-p02"
+                ],
+                "incoming_ids": [
+                  "demo-home-p05"
+                ],
+                "at_playing_ms": 60000
+              }
+            },
+            "changes": [
+              {
+                "entity": "player",
+                "id": "demo-home-p02",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              },
+              {
+                "entity": "player",
+                "id": "demo-home-p05",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              }
+            ],
+            "live_state": {
+              "version": 41,
+              "game": {
+                "id": "demo",
+                "name": "Milton Keynes Storm vs Northbank Wolves",
+                "status": "LIVE",
+                "competition": "Demonstration · fictional rosters",
+                "scheduled_start": null,
+                "external_id": null,
+                "period_lengths_ms": [
+                  1200000,
+                  1200000,
+                  1200000
+                ]
+              },
+              "teams": [
+                {
+                  "id": "demo-home",
+                  "name": "Milton Keynes Storm",
+                  "short_name": "MKS",
+                  "color": "#D8B95A",
+                  "side": "home",
+                  "external_id": null
+                },
+                {
+                  "id": "demo-away",
+                  "name": "Northbank Wolves",
+                  "short_name": "NBW",
+                  "color": "#76A9D5",
+                  "side": "away",
+                  "external_id": null
+                }
+              ],
+              "players": [
+                {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p02",
+                  "team_id": "demo-away",
+                  "name": "Oscar Hayes",
+                  "number": 19,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p05",
+                  "team_id": "demo-away",
+                  "name": "Archie Blake",
+                  "number": 26,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              ],
+              "lines": [],
+              "clock": {
+                "period": 1,
+                "remaining_ms": 1140000,
+                "running": true,
+                "playing_ms": 60000,
+                "anchor_unix_ms": 1792184460000,
+                "period_playing_ms": {
+                  "1": 60000
+                },
+                "period_spans": [
+                  {
+                    "period": 1,
+                    "start_playing_ms": 0,
+                    "end_playing_ms": 60000
+                  }
+                ]
+              },
+              "warnings": [
+                "MKS: 1 skaters on ice; verify the lineup.",
+                "MKS: empty net.",
+                "NBW: 1 skaters on ice; verify the lineup.",
+                "NBW: empty net."
+              ],
+              "strengths": {
+                "home": 1,
+                "away": 1
+              },
+              "clock_authority": {
+                "mode": "manual",
+                "generation": 0,
+                "source": null,
+                "service_id": null,
+                "last_source_sequence": 0,
+                "feed_status": "manual",
+                "observed_at_ms": null,
+                "stale_at_ms": null
+              },
+              "sampled_at_ms": 1792184460000,
+              "sample_seq": 60000,
+              "on_ice": {
+                "home": [
+                  "demo-home-p05"
+                ],
+                "away": [
+                  "demo-away-p02"
+                ]
+              }
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 4,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "acknowledged-durable-command",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.ack",
+        "message_id": "00000000-0000-4000-8000-00000000000a",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "committed_version": 41,
+          "current_version": 41,
+          "journal_cursor": "example-demo-generation1-position41",
+          "duplicate": false,
+          "journal_available": true
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 5,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "duplicate-command-original-version-current-head",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.ack",
+        "message_id": "00000000-0000-4000-8000-00000000000b",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "committed_version": 41,
+          "current_version": 45,
+          "journal_cursor": "example-demo-generation1-position41",
+          "duplicate": true,
+          "journal_available": true
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 6,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "legacy-receipt-with-no-journal-record",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.ack",
+        "message_id": "00000000-0000-4000-8000-00000000000c",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "committed_version": 12,
+          "current_version": 45,
+          "journal_cursor": null,
+          "duplicate": true,
+          "journal_available": false
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 7,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "expired-journal-row-still-has-durable-receipt",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.ack",
+        "message_id": "00000000-0000-4000-8000-00000000000d",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "committed_version": 41,
+          "current_version": 900,
+          "journal_cursor": "example-demo-generation1-position41",
+          "duplicate": true,
+          "journal_available": false
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 8,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "compact-live-TOI-tick",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "live.tick",
+        "message_id": "00000000-0000-4000-8000-00000000000e",
+        "game_id": "demo",
+        "data": {
+          "version": 41,
+          "sampled_at_ms": 1792184461000,
+          "sample_seq": 61000,
+          "clock": {
+            "period": 1,
+            "remaining_ms": 1139000,
+            "running": true,
+            "playing_ms": 61000,
+            "anchor_unix_ms": 1792184461000,
+            "period_playing_ms": {
+              "1": 61000
+            },
+            "period_spans": [
+              {
+                "period": 1,
+                "start_playing_ms": 0,
+                "end_playing_ms": 61000
+              }
+            ]
+          },
+          "clock_authority": {
+            "mode": "manual",
+            "generation": 0,
+            "source": null,
+            "service_id": null,
+            "last_source_sequence": 0,
+            "feed_status": "manual",
+            "observed_at_ms": null,
+            "stale_at_ms": null
+          },
+          "toi": [
+            {
+              "player_id": "demo-home-p02",
+              "total_toi_ms": 60000,
+              "current_shift_ms": 0,
+              "completed_shifts": 1,
+              "average_shift_ms": 60000,
+              "longest_shift_ms": 60000,
+              "toi_by_period": {
+                "1": 60000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-home-p05",
+              "total_toi_ms": 1000,
+              "current_shift_ms": 1000,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 1000,
+              "toi_by_period": {
+                "1": 1000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-away-p02",
+              "total_toi_ms": 61000,
+              "current_shift_ms": 61000,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 61000,
+              "toi_by_period": {
+                "1": 61000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-away-p05",
+              "total_toi_ms": 0,
+              "current_shift_ms": 0,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 0,
+              "toi_by_period": {
+                "1": 0,
+                "2": 0,
+                "3": 0
+              }
+            }
+          ],
+          "on_ice": {
+            "home": [
+              "demo-home-p05"
+            ],
+            "away": [
+              "demo-away-p02"
+            ]
+          },
+          "warnings": [
+            "MKS: 1 skaters on ice; verify the lineup.",
+            "MKS: empty net.",
+            "NBW: 1 skaters on ice; verify the lineup.",
+            "NBW: empty net."
+          ],
+          "strengths": {
+            "home": 1,
+            "away": 1
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 9,
+        "server_time_ms": 1792184461000
+      }
+    },
+    {
+      "name": "replayed-record-with-stable-durable-event-ID",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "event.recorded",
+        "message_id": "00000000-0000-4000-8000-00000000000f",
+        "game_id": "demo",
+        "data": {
+          "replay": true,
+          "record": {
+            "event_id": "50000000-0000-4000-8000-000000000001",
+            "journal_generation": "30000000-0000-4000-8000-000000000001",
+            "journal_seq": 41,
+            "cursor": "example-demo-generation1-position41",
+            "version": 41,
+            "kind": "substitution.updated",
+            "request_id": "40000000-0000-4000-8000-000000000001",
+            "actor": "operator-home",
+            "recorded_at_ms": 1792184460000,
+            "command": {
+              "type": "substitute",
+              "payload": {
+                "team_id": "demo-home",
+                "outgoing_ids": [
+                  "demo-home-p02"
+                ],
+                "incoming_ids": [
+                  "demo-home-p05"
+                ],
+                "at_playing_ms": 60000
+              }
+            },
+            "changes": [
+              {
+                "entity": "player",
+                "id": "demo-home-p02",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              },
+              {
+                "entity": "player",
+                "id": "demo-home-p05",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              }
+            ],
+            "live_state": {
+              "version": 41,
+              "game": {
+                "id": "demo",
+                "name": "Milton Keynes Storm vs Northbank Wolves",
+                "status": "LIVE",
+                "competition": "Demonstration · fictional rosters",
+                "scheduled_start": null,
+                "external_id": null,
+                "period_lengths_ms": [
+                  1200000,
+                  1200000,
+                  1200000
+                ]
+              },
+              "teams": [
+                {
+                  "id": "demo-home",
+                  "name": "Milton Keynes Storm",
+                  "short_name": "MKS",
+                  "color": "#D8B95A",
+                  "side": "home",
+                  "external_id": null
+                },
+                {
+                  "id": "demo-away",
+                  "name": "Northbank Wolves",
+                  "short_name": "NBW",
+                  "color": "#76A9D5",
+                  "side": "away",
+                  "external_id": null
+                }
+              ],
+              "players": [
+                {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p02",
+                  "team_id": "demo-away",
+                  "name": "Oscar Hayes",
+                  "number": 19,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p05",
+                  "team_id": "demo-away",
+                  "name": "Archie Blake",
+                  "number": 26,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              ],
+              "lines": [],
+              "clock": {
+                "period": 1,
+                "remaining_ms": 1140000,
+                "running": true,
+                "playing_ms": 60000,
+                "anchor_unix_ms": 1792184460000,
+                "period_playing_ms": {
+                  "1": 60000
+                },
+                "period_spans": [
+                  {
+                    "period": 1,
+                    "start_playing_ms": 0,
+                    "end_playing_ms": 60000
+                  }
+                ]
+              },
+              "warnings": [
+                "MKS: 1 skaters on ice; verify the lineup.",
+                "MKS: empty net.",
+                "NBW: 1 skaters on ice; verify the lineup.",
+                "NBW: empty net."
+              ],
+              "strengths": {
+                "home": 1,
+                "away": 1
+              },
+              "clock_authority": {
+                "mode": "manual",
+                "generation": 0,
+                "source": null,
+                "service_id": null,
+                "last_source_sequence": 0,
+                "feed_status": "manual",
+                "observed_at_ms": null,
+                "stale_at_ms": null
+              },
+              "sampled_at_ms": 1792184460000,
+              "sample_seq": 60000,
+              "on_ice": {
+                "home": [
+                  "demo-home-p05"
+                ],
+                "away": [
+                  "demo-away-p02"
+                ]
+              }
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 10,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "record-with-existing-v1-request-ID",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "event.recorded",
+        "message_id": "00000000-0000-4000-8000-000000000010",
+        "game_id": "demo",
+        "data": {
+          "replay": true,
+          "record": {
+            "event_id": "50000000-0000-4000-8000-000000000002",
+            "journal_generation": "30000000-0000-4000-8000-000000000001",
+            "journal_seq": 41,
+            "cursor": "example-demo-generation1-position41",
+            "version": 41,
+            "kind": "substitution.updated",
+            "request_id": "existing-v1-non-UUID-command-ID",
+            "actor": "operator-home",
+            "recorded_at_ms": 1792184460000,
+            "command": {
+              "type": "substitute",
+              "payload": {
+                "team_id": "demo-home",
+                "outgoing_ids": [
+                  "demo-home-p02"
+                ],
+                "incoming_ids": [
+                  "demo-home-p05"
+                ],
+                "at_playing_ms": 60000
+              }
+            },
+            "changes": [
+              {
+                "entity": "player",
+                "id": "demo-home-p02",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              },
+              {
+                "entity": "player",
+                "id": "demo-home-p05",
+                "operation": "upsert",
+                "before": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                "after": {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              }
+            ],
+            "live_state": {
+              "version": 41,
+              "game": {
+                "id": "demo",
+                "name": "Milton Keynes Storm vs Northbank Wolves",
+                "status": "LIVE",
+                "competition": "Demonstration · fictional rosters",
+                "scheduled_start": null,
+                "external_id": null,
+                "period_lengths_ms": [
+                  1200000,
+                  1200000,
+                  1200000
+                ]
+              },
+              "teams": [
+                {
+                  "id": "demo-home",
+                  "name": "Milton Keynes Storm",
+                  "short_name": "MKS",
+                  "color": "#D8B95A",
+                  "side": "home",
+                  "external_id": null
+                },
+                {
+                  "id": "demo-away",
+                  "name": "Northbank Wolves",
+                  "short_name": "NBW",
+                  "color": "#76A9D5",
+                  "side": "away",
+                  "external_id": null
+                }
+              ],
+              "players": [
+                {
+                  "id": "demo-home-p02",
+                  "team_id": "demo-home",
+                  "name": "Theo Bennett",
+                  "number": 17,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 1,
+                  "average_shift_ms": 60000,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-home-p05",
+                  "team_id": "demo-home",
+                  "name": "Noah Ellis",
+                  "number": 18,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p02",
+                  "team_id": "demo-away",
+                  "name": "Oscar Hayes",
+                  "number": 19,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "ON_ICE",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 60000,
+                  "current_shift_ms": 60000,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 60000,
+                  "toi_by_period": {
+                    "1": 60000,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                },
+                {
+                  "id": "demo-away-p05",
+                  "team_id": "demo-away",
+                  "name": "Archie Blake",
+                  "number": 26,
+                  "position": "LW",
+                  "eligible": true,
+                  "location": "BENCH",
+                  "external_id": null,
+                  "last_event_id": null,
+                  "total_toi_ms": 0,
+                  "current_shift_ms": 0,
+                  "completed_shifts": 0,
+                  "average_shift_ms": 0,
+                  "longest_shift_ms": 0,
+                  "toi_by_period": {
+                    "1": 0,
+                    "2": 0,
+                    "3": 0
+                  },
+                  "strength_toi": null
+                }
+              ],
+              "lines": [],
+              "clock": {
+                "period": 1,
+                "remaining_ms": 1140000,
+                "running": true,
+                "playing_ms": 60000,
+                "anchor_unix_ms": 1792184460000,
+                "period_playing_ms": {
+                  "1": 60000
+                },
+                "period_spans": [
+                  {
+                    "period": 1,
+                    "start_playing_ms": 0,
+                    "end_playing_ms": 60000
+                  }
+                ]
+              },
+              "warnings": [
+                "MKS: 1 skaters on ice; verify the lineup.",
+                "MKS: empty net.",
+                "NBW: 1 skaters on ice; verify the lineup.",
+                "NBW: empty net."
+              ],
+              "strengths": {
+                "home": 1,
+                "away": 1
+              },
+              "clock_authority": {
+                "mode": "manual",
+                "generation": 0,
+                "source": null,
+                "service_id": null,
+                "last_source_sequence": 0,
+                "feed_status": "manual",
+                "observed_at_ms": null,
+                "stale_at_ms": null
+              },
+              "sampled_at_ms": 1792184460000,
+              "sample_seq": 60000,
+              "on_ice": {
+                "home": [
+                  "demo-home-p05"
+                ],
+                "away": [
+                  "demo-away-p02"
+                ]
+              }
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 11,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "ready-after-journal-catch-up",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "stream.ready",
+        "message_id": "00000000-0000-4000-8000-000000000011",
+        "game_id": "demo",
+        "data": {
+          "through_cursor": "example-demo-generation1-position41",
+          "version": 41
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 12,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "request-fresh-state",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "state.request",
+        "message_id": "00000000-0000-4000-8000-000000000012",
+        "game_id": "demo",
+        "data": {}
+      }
+    },
+    {
+      "name": "requested-two-team-state",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "state.snapshot",
+        "message_id": "00000000-0000-4000-8000-000000000013",
+        "game_id": "demo",
+        "data": {
+          "reason": "requested",
+          "baseline_cursor": "example-demo-generation1-position41",
+          "version": 41,
+          "state": {
+            "version": 41,
+            "game": {
+              "id": "demo",
+              "name": "Milton Keynes Storm vs Northbank Wolves",
+              "status": "LIVE",
+              "competition": "Demonstration · fictional rosters",
+              "scheduled_start": null,
+              "external_id": null,
+              "period_lengths_ms": [
+                1200000,
+                1200000,
+                1200000
+              ]
+            },
+            "teams": [
+              {
+                "id": "demo-home",
+                "name": "Milton Keynes Storm",
+                "short_name": "MKS",
+                "color": "#D8B95A",
+                "side": "home",
+                "external_id": null
+              },
+              {
+                "id": "demo-away",
+                "name": "Northbank Wolves",
+                "short_name": "NBW",
+                "color": "#76A9D5",
+                "side": "away",
+                "external_id": null
+              }
+            ],
+            "players": [
+              {
+                "id": "demo-home-p02",
+                "team_id": "demo-home",
+                "name": "Theo Bennett",
+                "number": 17,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                "total_toi_ms": 60000,
+                "current_shift_ms": 0,
+                "completed_shifts": 1,
+                "average_shift_ms": 60000,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-home-p05",
+                "team_id": "demo-home",
+                "name": "Noah Ellis",
+                "number": 18,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p02",
+                "team_id": "demo-away",
+                "name": "Oscar Hayes",
+                "number": 19,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 60000,
+                "current_shift_ms": 60000,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p05",
+                "team_id": "demo-away",
+                "name": "Archie Blake",
+                "number": 26,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              }
+            ],
+            "lines": [],
+            "clock": {
+              "period": 1,
+              "remaining_ms": 1140000,
+              "running": true,
+              "playing_ms": 60000,
+              "anchor_unix_ms": 1792184460000,
+              "period_playing_ms": {
+                "1": 60000
+              },
+              "period_spans": [
+                {
+                  "period": 1,
+                  "start_playing_ms": 0,
+                  "end_playing_ms": 60000
+                }
+              ]
+            },
+            "warnings": [
+              "MKS: 1 skaters on ice; verify the lineup.",
+              "MKS: empty net.",
+              "NBW: 1 skaters on ice; verify the lineup.",
+              "NBW: empty net."
+            ],
+            "strengths": {
+              "home": 1,
+              "away": 1
+            },
+            "clock_authority": {
+              "mode": "manual",
+              "generation": 0,
+              "source": null,
+              "service_id": null,
+              "last_source_sequence": 0,
+              "feed_status": "manual",
+              "observed_at_ms": null,
+              "stale_at_ms": null
+            },
+            "sampled_at_ms": 1792184460000,
+            "sample_seq": 60000,
+            "on_ice": {
+              "home": [
+                "demo-home-p05"
+              ],
+              "away": [
+                "demo-away-p02"
+              ]
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 13,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "current-v1-move-payload",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000014",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000002",
+          "expected_version": 41,
+          "command": {
+            "type": "move",
+            "payload": {
+              "player_id": "demo-home-p04",
+              "to": "PENALTY_BOX"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "current-v1-clock-payload",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000015",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000003",
+          "expected_version": 41,
+          "command": {
+            "type": "clock",
+            "payload": {
+              "operation": "pause"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "current-v1-undo-payload",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000016",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000004",
+          "expected_version": 41,
+          "command": {
+            "type": "undo",
+            "payload": {
+              "event_id": "example-v1-movement-id"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "current-v1-correct-payload",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000017",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000005",
+          "expected_version": 41,
+          "command": {
+            "type": "correct",
+            "payload": {
+              "event_id": "example-v1-movement-id",
+              "replacement": {
+                "type": "move",
+                "payload": {
+                  "player_id": "demo-home-p04",
+                  "to": "BENCH"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "current-v1-setup-payload",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000018",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000006",
+          "expected_version": 41,
+          "command": {
+            "type": "setup",
+            "payload": {
+              "players": [
+                {
+                  "id": "demo-home-p04",
+                  "name": "Jamie Rowan",
+                  "number": 12,
+                  "position": "C",
+                  "eligible": true
+                }
+              ],
+              "game": {
+                "competition": "Training fixture"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "grant-clock-ownership-to-service",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-000000000019",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000007",
+          "expected_version": 41,
+          "command": {
+            "type": "clock.authority.set",
+            "payload": {
+              "mode": "external",
+              "source": "scoreboard",
+              "service_id": "scoreboard-bridge"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "explicit-manual-clock-handover",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "command.submit",
+        "message_id": "00000000-0000-4000-8000-00000000001a",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000008",
+          "expected_version": 42,
+          "command": {
+            "type": "clock.authority.set",
+            "payload": {
+              "mode": "manual",
+              "source": null,
+              "service_id": null
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "owned-clock-observation",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "clock.observe",
+        "message_id": "00000000-0000-4000-8000-00000000001b",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000009",
+          "expected_version": 42,
+          "authority_generation": 1,
+          "source": "scoreboard",
+          "source_sequence": 1,
+          "observed_at_ms": 1792184460000,
+          "period": 1,
+          "remaining_ms": 1140000,
+          "running": true
+        }
+      }
+    },
+    {
+      "name": "external-clock-authority-state",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "state.snapshot",
+        "message_id": "00000000-0000-4000-8000-00000000001c",
+        "game_id": "demo",
+        "data": {
+          "reason": "requested",
+          "baseline_cursor": "example-demo-generation1-position42",
+          "version": 42,
+          "state": {
+            "version": 42,
+            "game": {
+              "id": "demo",
+              "name": "Milton Keynes Storm vs Northbank Wolves",
+              "status": "LIVE",
+              "competition": "Demonstration · fictional rosters",
+              "scheduled_start": null,
+              "external_id": null,
+              "period_lengths_ms": [
+                1200000,
+                1200000,
+                1200000
+              ]
+            },
+            "teams": [
+              {
+                "id": "demo-home",
+                "name": "Milton Keynes Storm",
+                "short_name": "MKS",
+                "color": "#D8B95A",
+                "side": "home",
+                "external_id": null
+              },
+              {
+                "id": "demo-away",
+                "name": "Northbank Wolves",
+                "short_name": "NBW",
+                "color": "#76A9D5",
+                "side": "away",
+                "external_id": null
+              }
+            ],
+            "players": [
+              {
+                "id": "demo-home-p02",
+                "team_id": "demo-home",
+                "name": "Theo Bennett",
+                "number": 17,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                "total_toi_ms": 60000,
+                "current_shift_ms": 0,
+                "completed_shifts": 1,
+                "average_shift_ms": 60000,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-home-p05",
+                "team_id": "demo-home",
+                "name": "Noah Ellis",
+                "number": 18,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": "1ef8b519-58f2-4396-8b88-e33e70a43cf0",
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p02",
+                "team_id": "demo-away",
+                "name": "Oscar Hayes",
+                "number": 19,
+                "position": "LW",
+                "eligible": true,
+                "location": "ON_ICE",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 60000,
+                "current_shift_ms": 60000,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 60000,
+                "toi_by_period": {
+                  "1": 60000,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              },
+              {
+                "id": "demo-away-p05",
+                "team_id": "demo-away",
+                "name": "Archie Blake",
+                "number": 26,
+                "position": "LW",
+                "eligible": true,
+                "location": "BENCH",
+                "external_id": null,
+                "last_event_id": null,
+                "total_toi_ms": 0,
+                "current_shift_ms": 0,
+                "completed_shifts": 0,
+                "average_shift_ms": 0,
+                "longest_shift_ms": 0,
+                "toi_by_period": {
+                  "1": 0,
+                  "2": 0,
+                  "3": 0
+                },
+                "strength_toi": null
+              }
+            ],
+            "lines": [],
+            "clock": {
+              "period": 1,
+              "remaining_ms": 1140000,
+              "running": false,
+              "playing_ms": 60000,
+              "anchor_unix_ms": 1792184460000,
+              "period_playing_ms": {
+                "1": 60000
+              },
+              "period_spans": [
+                {
+                  "period": 1,
+                  "start_playing_ms": 0,
+                  "end_playing_ms": 60000
+                }
+              ],
+              "source": "scoreboard"
+            },
+            "warnings": [
+              "MKS: 1 skaters on ice; verify the lineup.",
+              "MKS: empty net.",
+              "NBW: 1 skaters on ice; verify the lineup.",
+              "NBW: empty net."
+            ],
+            "strengths": {
+              "home": 1,
+              "away": 1
+            },
+            "clock_authority": {
+              "mode": "external",
+              "generation": 1,
+              "source": "scoreboard",
+              "service_id": "scoreboard-bridge",
+              "last_source_sequence": 0,
+              "feed_status": "stale",
+              "observed_at_ms": null,
+              "stale_at_ms": null
+            },
+            "sampled_at_ms": 1792184460000,
+            "sample_seq": 60000,
+            "on_ice": {
+              "home": [
+                "demo-home-p05"
+              ],
+              "away": [
+                "demo-away-p02"
+              ]
+            }
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 14,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "fresh-external-clock-tick-with-interpolation-deadline",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "live.tick",
+        "message_id": "00000000-0000-4000-8000-00000000001d",
+        "game_id": "demo",
+        "data": {
+          "version": 43,
+          "sampled_at_ms": 1792184461000,
+          "sample_seq": 61000,
+          "clock": {
+            "period": 1,
+            "remaining_ms": 1139000,
+            "running": true,
+            "playing_ms": 61000,
+            "anchor_unix_ms": 1792184461000,
+            "period_playing_ms": {
+              "1": 61000
+            },
+            "period_spans": [
+              {
+                "period": 1,
+                "start_playing_ms": 0,
+                "end_playing_ms": 61000
+              }
+            ],
+            "source": "scoreboard"
+          },
+          "clock_authority": {
+            "mode": "external",
+            "generation": 1,
+            "source": "scoreboard",
+            "service_id": "scoreboard-bridge",
+            "last_source_sequence": 1,
+            "feed_status": "fresh",
+            "observed_at_ms": 1792184460000,
+            "stale_at_ms": 1792184463000
+          },
+          "toi": [
+            {
+              "player_id": "demo-home-p02",
+              "total_toi_ms": 60000,
+              "current_shift_ms": 0,
+              "completed_shifts": 1,
+              "average_shift_ms": 60000,
+              "longest_shift_ms": 60000,
+              "toi_by_period": {
+                "1": 60000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-home-p05",
+              "total_toi_ms": 1000,
+              "current_shift_ms": 1000,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 1000,
+              "toi_by_period": {
+                "1": 1000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-away-p02",
+              "total_toi_ms": 61000,
+              "current_shift_ms": 61000,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 61000,
+              "toi_by_period": {
+                "1": 61000,
+                "2": 0,
+                "3": 0
+              }
+            },
+            {
+              "player_id": "demo-away-p05",
+              "total_toi_ms": 0,
+              "current_shift_ms": 0,
+              "completed_shifts": 0,
+              "average_shift_ms": 0,
+              "longest_shift_ms": 0,
+              "toi_by_period": {
+                "1": 0,
+                "2": 0,
+                "3": 0
+              }
+            }
+          ],
+          "on_ice": {
+            "home": [
+              "demo-home-p05"
+            ],
+            "away": [
+              "demo-away-p02"
+            ]
+          },
+          "warnings": [
+            "MKS: 1 skaters on ice; verify the lineup.",
+            "MKS: empty net.",
+            "NBW: 1 skaters on ice; verify the lineup.",
+            "NBW: empty net."
+          ],
+          "strengths": {
+            "home": 1,
+            "away": 1
+          }
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 15,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "client-heartbeat-ping",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "ping",
+        "message_id": "00000000-0000-4000-8000-00000000001e",
+        "game_id": "demo",
+        "data": {
+          "nonce": "heartbeat-0001",
+          "client_sent_at_ms": 1792184460000
+        }
+      }
+    },
+    {
+      "name": "server-heartbeat-pong",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "pong",
+        "message_id": "00000000-0000-4000-8000-00000000001f",
+        "game_id": "demo",
+        "data": {
+          "nonce": "heartbeat-0001",
+          "client_sent_at_ms": 1792184460000
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 16,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "server-heartbeat-ping",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "ping",
+        "message_id": "00000000-0000-4000-8000-000000000020",
+        "game_id": "demo",
+        "data": {
+          "nonce": "heartbeat-0001",
+          "client_sent_at_ms": 1792184460000
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 17,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "client-heartbeat-pong",
+      "direction": "client",
+      "message": {
+        "protocol": 2,
+        "type": "pong",
+        "message_id": "00000000-0000-4000-8000-000000000021",
+        "game_id": "demo",
+        "data": {
+          "nonce": "heartbeat-0001",
+          "client_sent_at_ms": 1792184460000
+        }
+      }
+    },
+    {
+      "name": "stale-version-rejection",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.error",
+        "message_id": "00000000-0000-4000-8000-000000000022",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "code": "VERSION_CONFLICT",
+          "detail": "The match changed. Refresh state and review a new command.",
+          "retryable": false,
+          "resync_required": true,
+          "current_version": 42,
+          "retry_after_ms": null
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 18,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "rate-limit-backoff",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.error",
+        "message_id": "00000000-0000-4000-8000-000000000023",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "code": "RATE_LIMITED",
+          "detail": "Wait before retrying the same unmodified request.",
+          "retryable": true,
+          "resync_required": false,
+          "current_version": 42,
+          "retry_after_ms": 1000
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 19,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "unknown-command-outcome",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.error",
+        "message_id": "00000000-0000-4000-8000-000000000024",
+        "game_id": "demo",
+        "data": {
+          "request_id": "40000000-0000-4000-8000-000000000001",
+          "code": "OUTCOME_UNKNOWN",
+          "detail": "The commit outcome is unknown. Reconnect and retry the identical request ID and body.",
+          "retryable": true,
+          "resync_required": true,
+          "current_version": null,
+          "retry_after_ms": null
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 20,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "invalid-envelope-with-no-known-request-ID",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "command.error",
+        "message_id": "00000000-0000-4000-8000-000000000025",
+        "game_id": "demo",
+        "data": {
+          "request_id": null,
+          "code": "INVALID_MESSAGE",
+          "detail": "The message does not match the protocol contract.",
+          "retryable": false,
+          "resync_required": false,
+          "current_version": null,
+          "retry_after_ms": null
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 21,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "history-catch-up-required",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "replay.required",
+        "message_id": "00000000-0000-4000-8000-000000000026",
+        "game_id": "demo",
+        "data": {
+          "after_cursor": "example-demo-generation1-position40",
+          "through_cursor": "example-demo-generation1-position41",
+          "max_records": 1000,
+          "max_bytes": 8388608
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 22,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "full-history-catch-up-required",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "replay.required",
+        "message_id": "00000000-0000-4000-8000-000000000027",
+        "game_id": "demo",
+        "data": {
+          "after_cursor": null,
+          "through_cursor": "example-demo-generation1-position41",
+          "max_records": 1000,
+          "max_bytes": 8388608
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 23,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "expired-resume-cursor",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "session.error",
+        "message_id": "00000000-0000-4000-8000-000000000028",
+        "game_id": "demo",
+        "data": {
+          "code": "CURSOR_EXPIRED",
+          "detail": "The requested journal position has expired. Rebaseline the live display or restore archival history.",
+          "oldest_cursor": "example-demo-generation1-position40",
+          "high_water_cursor": "example-demo-generation1-position41"
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 24,
+        "server_time_ms": 1792184460000
+      }
+    },
+    {
+      "name": "authentication-expired",
+      "direction": "server",
+      "message": {
+        "protocol": 2,
+        "type": "session.error",
+        "message_id": "00000000-0000-4000-8000-000000000029",
+        "game_id": "demo",
+        "data": {
+          "code": "AUTHENTICATION_EXPIRED",
+          "detail": "The service credential has expired. Obtain a new credential before reconnecting.",
+          "oldest_cursor": null,
+          "high_water_cursor": null
+        },
+        "connection_id": "10000000-0000-4000-8000-000000000001",
+        "server_epoch": "20000000-0000-4000-8000-000000000001",
+        "seq": 25,
+        "server_time_ms": 1792184460000
+      }
+    }
+  ],
+  "invalid": [
+    {
+      "name": "command-in-server-direction",
+      "direction": "server",
+      "reason": "Commands are client messages only",
+      "base": "single-player-substitution-command",
+      "changes": []
+    },
+    {
+      "name": "ack-in-client-direction",
+      "direction": "client",
+      "reason": "Acknowledgements are server messages only",
+      "base": "acknowledged-durable-command",
+      "changes": []
+    },
+    {
+      "name": "server-ping-in-client-direction",
+      "direction": "client",
+      "reason": "Client messages must not claim server metadata",
+      "base": "server-heartbeat-ping",
+      "changes": []
+    },
+    {
+      "name": "client-ping-in-server-direction",
+      "direction": "server",
+      "reason": "Server messages require connection, epoch, sequence and timestamp",
+      "base": "client-heartbeat-ping",
+      "changes": []
+    },
+    {
+      "name": "unsupported-protocol",
+      "direction": "client",
+      "reason": "Protocol 2 is required",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/protocol",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "malformed-message-UUID",
+      "direction": "client",
+      "reason": "message_id requires a UUID with format checking",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/message_id",
+          "value": "not-a-uuid"
+        }
+      ]
+    },
+    {
+      "name": "empty-game-identity",
+      "direction": "client",
+      "reason": "The game path identity must be present and nonempty",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/game_id",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "name": "unexpected-client-property",
+      "direction": "client",
+      "reason": "Unknown write fields are rejected",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/actor",
+          "value": "untrusted-service"
+        }
+      ]
+    },
+    {
+      "name": "resume-without-cursor",
+      "direction": "client",
+      "reason": "Resume requires after_cursor",
+      "base": "resume-after-durably-processed-cursor",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/after_cursor"
+        }
+      ]
+    },
+    {
+      "name": "now-with-cursor",
+      "direction": "client",
+      "reason": "after_cursor is allowed only with journal_mode resume",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/data/after_cursor",
+          "value": "example-demo-generation1-position40"
+        }
+      ]
+    },
+    {
+      "name": "unsupported-tick-rate",
+      "direction": "client",
+      "reason": "Only 0,1,2,5,10 Hz are allowed",
+      "base": "open-live-session",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/tick_hz",
+          "value": 100
+        }
+      ]
+    },
+    {
+      "name": "invalid-location-command",
+      "direction": "client",
+      "reason": "Current typed v1 payload rules apply",
+      "base": "single-player-substitution-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/command/type",
+          "value": "move"
+        },
+        {
+          "op": "remove",
+          "path": "/data/command/payload/outgoing_ids"
+        },
+        {
+          "op": "remove",
+          "path": "/data/command/payload/at_playing_ms"
+        },
+        {
+          "op": "remove",
+          "path": "/data/command/payload/incoming_ids"
+        },
+        {
+          "op": "remove",
+          "path": "/data/command/payload/team_id"
+        },
+        {
+          "op": "add",
+          "path": "/data/command/payload/player_id",
+          "value": "demo-home-p04"
+        },
+        {
+          "op": "add",
+          "path": "/data/command/payload/to",
+          "value": "LOCKER_ROOM"
+        }
+      ]
+    },
+    {
+      "name": "unknown-command-payload-field",
+      "direction": "client",
+      "reason": "v1 typed payloads forbid extra properties",
+      "base": "single-player-substitution-command",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/data/command/payload/override_version",
+          "value": true
+        }
+      ]
+    },
+    {
+      "name": "negative-expected-version",
+      "direction": "client",
+      "reason": "Versions are nonnegative integers",
+      "base": "single-player-substitution-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/expected_version",
+          "value": -1
+        }
+      ]
+    },
+    {
+      "name": "request-ID-must-be-UUID",
+      "direction": "client",
+      "reason": "v2 request IDs require UUIDs, unlike current v1 arbitrary IDs",
+      "base": "single-player-substitution-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/request_id",
+          "value": "arbitrary-valid-v1-ID"
+        }
+      ]
+    },
+    {
+      "name": "external-authority-requires-owner",
+      "direction": "client",
+      "reason": "External ownership must identify the exact service",
+      "base": "grant-clock-ownership-to-service",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/command/payload/service_id",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "manual-authority-has-no-source",
+      "direction": "client",
+      "reason": "Manual authority requires null source and service_id",
+      "base": "grant-clock-ownership-to-service",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/command/payload/mode",
+          "value": "manual"
+        }
+      ]
+    },
+    {
+      "name": "zero-source-sequence",
+      "direction": "client",
+      "reason": "Observation sequences start at one",
+      "base": "owned-clock-observation",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/source_sequence",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "empty-clock-source",
+      "direction": "client",
+      "reason": "The source is a nonempty identifier",
+      "base": "owned-clock-observation",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/source",
+          "value": ""
+        }
+      ]
+    },
+    {
+      "name": "negative-clock-countdown",
+      "direction": "client",
+      "reason": "Clock milliseconds must be nonnegative",
+      "base": "owned-clock-observation",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/remaining_ms",
+          "value": -1
+        }
+      ]
+    },
+    {
+      "name": "unbounded-history-on-live-state",
+      "direction": "server",
+      "reason": "History belongs in journal/history APIs, not live state",
+      "base": "initial-two-team-lineup-and-TOI",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/data/state/events",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "unbounded-shifts-on-live-state",
+      "direction": "server",
+      "reason": "Shift history is not part of compact live state",
+      "base": "initial-two-team-lineup-and-TOI",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/data/state/shifts",
+          "value": []
+        }
+      ]
+    },
+    {
+      "name": "missing-player-timing",
+      "direction": "server",
+      "reason": "Live roster entries include authoritative TOI fields",
+      "base": "initial-two-team-lineup-and-TOI",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/state/players/0/current_shift_ms"
+        }
+      ]
+    },
+    {
+      "name": "negative-live-TOI",
+      "direction": "server",
+      "reason": "TOI statistics are nonnegative integer milliseconds",
+      "base": "compact-live-TOI-tick",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/toi/0/total_toi_ms",
+          "value": -1
+        }
+      ]
+    },
+    {
+      "name": "missing-server-epoch",
+      "direction": "server",
+      "reason": "Every server message identifies its server epoch",
+      "base": "acknowledged-durable-command",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/server_epoch"
+        }
+      ]
+    },
+    {
+      "name": "zero-connection-sequence",
+      "direction": "server",
+      "reason": "Connection sequence starts at one",
+      "base": "acknowledged-durable-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/seq",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "name": "non-interoperable-connection-sequence",
+      "direction": "server",
+      "reason": "Protocol counters must fit the interoperable JSON integer range",
+      "base": "acknowledged-durable-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/seq",
+          "value": 9007199254740992
+        }
+      ]
+    },
+    {
+      "name": "non-interoperable-live-sample-sequence",
+      "direction": "server",
+      "reason": "Live counters must fit the interoperable JSON integer range",
+      "base": "compact-live-TOI-tick",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/sample_seq",
+          "value": 9007199254740992
+        }
+      ]
+    },
+    {
+      "name": "null-cursor-not-replayable",
+      "direction": "server",
+      "reason": "Null journal_cursor requires journal_available false",
+      "base": "acknowledged-durable-command",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/journal_cursor",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "welcome-needs-zero-position-cursor",
+      "direction": "server",
+      "reason": "Empty history uses an opaque zero-position cursor, not null",
+      "base": "welcome-capabilities-and-zero-position",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/oldest_cursor",
+          "value": null
+        }
+      ]
+    },
+    {
+      "name": "welcome-unsupported-tick-rate",
+      "direction": "server",
+      "reason": "The server cannot advertise an unsupported sample rate",
+      "base": "welcome-capabilities-and-zero-position",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/tick_hz",
+          "value": 100
+        }
+      ]
+    },
+    {
+      "name": "welcome-queue-byte-bound-too-small",
+      "direction": "server",
+      "reason": "Queue byte capacity must accommodate at least one maximum server message",
+      "base": "welcome-capabilities-and-zero-position",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/queue_max_bytes",
+          "value": 1024
+        }
+      ]
+    },
+    {
+      "name": "unknown-error-code",
+      "direction": "server",
+      "reason": "Error codes are a documented closed enum",
+      "base": "stale-version-rejection",
+      "changes": [
+        {
+          "op": "replace",
+          "path": "/data/code",
+          "value": "SOMETHING_WENT_WRONG"
+        }
+      ]
+    },
+    {
+      "name": "missing-live-sample-time",
+      "direction": "server",
+      "reason": "Live state requires its projection sample timestamp",
+      "base": "initial-two-team-lineup-and-TOI",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/state/sampled_at_ms"
+        }
+      ]
+    },
+    {
+      "name": "missing-live-sample-counter",
+      "direction": "server",
+      "reason": "Live state requires its ephemeral sample sequence",
+      "base": "initial-two-team-lineup-and-TOI",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/state/sample_seq"
+        }
+      ]
+    },
+    {
+      "name": "missing-live-tick-sample-counter",
+      "direction": "server",
+      "reason": "Ticks require their ephemeral sample sequence",
+      "base": "compact-live-TOI-tick",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/sample_seq"
+        }
+      ]
+    },
+    {
+      "name": "missing-live-tick-authority",
+      "direction": "server",
+      "reason": "Ticks expose clock freshness even during watchdog persistence failure",
+      "base": "compact-live-TOI-tick",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/clock_authority"
+        }
+      ]
+    },
+    {
+      "name": "missing-interpolation-deadline",
+      "direction": "server",
+      "reason": "Authority carries a nullable stale deadline on every sample",
+      "base": "compact-live-TOI-tick",
+      "changes": [
+        {
+          "op": "remove",
+          "path": "/data/clock_authority/stale_at_ms"
+        }
+      ]
+    },
+    {
+      "name": "unknown-read-top-level-property",
+      "direction": "server",
+      "reason": "Envelope fields remain fixed even though player reads are extensible",
+      "base": "acknowledged-durable-command",
+      "changes": [
+        {
+          "op": "add",
+          "path": "/transport",
+          "value": "udp"
+        }
+      ]
+    }
+  ]
+}

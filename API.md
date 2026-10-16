@@ -1,5 +1,7 @@
 # API v1
 
+This file describes implemented endpoints. The existing WebSocket sends updates; commands enter over HTTP. [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md) documents this current integration pattern and specifies a separate, proposed duplex service protocol for clock input, per-player TOI, on-ice lineups and replayable recorded changes. Its v2 endpoints are not implemented by this API.
+
 The backend exposes [OpenAPI JSON](http://localhost:8000/openapi.json) and [interactive API documentation](http://localhost:8000/docs). All JSON timing fields ending `_ms` are integer milliseconds. Player IDs are opaque strings; jersey numbers are roster attributes.
 
 When token authentication is configured, send `Authorization: Bearer <token>` on HTTP requests. In local demo mode, no credential is required. The authenticated principal supplies the audit actor; a client `actor` field is ignored for identity. Health is public.
@@ -214,6 +216,8 @@ The example is abbreviated; all eligible bench players are returned. `score` is 
 Weights in `recommendations.DEFAULT_WEIGHTS` are independently overrideable in the pure `recommend` function. Observations derive from active authoritative events, configured groups and reconstructed shifts; undo and historical corrections affect the next ranking immediately.
 
 ## WebSocket stream
+
+This is a server-to-client application stream. Sending a command frame to it does not execute an action; use the HTTP command/clock endpoints above.
 
 Connect to `ws://localhost:8000/api/v1/games/demo/ws` (`wss:` under TLS). When configured, supply `?token=<URL-encoded bearer token>` or an Authorization header if the client supports it. Browser origins must match the same origin or an entry in `TOI_CORS_ORIGINS`.
 

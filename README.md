@@ -154,6 +154,8 @@ See [.env.example](.env.example) for all deployment settings. Empty authenticati
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for timing, persistence and concurrency decisions; [API.md](API.md) for commands and live snapshots; and [INTEGRATION.md](INTEGRATION.md) for website mounting, roster imports, scoreboard observations and graphics consumers.
 
+For continuous external clock, player TOI, on-ice lineup and recorded-change integrations, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). It inventories the current HTTP-input/WebSocket-output API and supplies the proposed duplex v2 protocol, durable replay, clock ownership, service permissions, machine-readable contracts and latency acceptance plan. The v2 design is documented but is not implemented by the current images.
+
 Run a single backend worker until the process-local WebSocket notification bus is replaced with shared pub/sub. Formal penalty enforcement and strength-classified TOI, seasonal totals, direct vMix output and real OCR/authentication integrations remain future work. The prototype records physical locations and reports even-strength/power-play/penalty-kill statistics as unavailable rather than inferring rules from the penalty box.
 
 Native tests cover SQLite, and the Linux container smoke workflow builds both Docker images and exercises the PostgreSQL stack, nginx, authenticated HTTP/WebSockets, substitution/undo and persistence across container recreation. See [VALIDATION.md](VALIDATION.md) for the recorded run and [PORTAINER.md](PORTAINER.md) for deployment on your own Docker host.

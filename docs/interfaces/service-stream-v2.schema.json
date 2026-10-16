@@ -1,0 +1,2976 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:lightning-tv:toi:service-stream:v2",
+  "title": "Lightning TV TOI service-stream v2 — DESIGN ONLY",
+  "description": "Proposed contract only. No /api/v2 endpoints or v2 WebSocket handler are implemented. The current runtime remains HTTP commands plus a receive-only v1 update stream.",
+  "$comment": "Validate with Draft 2020-12 and UUID format assertions. This schema checks message structure, not authentication, permissions, cursor signatures, byte limits, journal ordering, authority ownership or session-state transitions. V1_* definitions are generated from current backend/toi/schemas.py and checked by scripts/validate_service_interface.py --check-v1. LiveState intentionally omits unbounded event/shift histories.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/ClientMessage"
+    },
+    {
+      "$ref": "#/$defs/ServerMessage"
+    }
+  ],
+  "$defs": {
+    "UUID": {
+      "type": "string",
+      "format": "uuid",
+      "minLength": 36,
+      "maxLength": 36
+    },
+    "Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "Cursor": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Opaque game/generation-bound journal position; includes a valid zero position. Never parse or compare cursor text."
+    },
+    "UnsignedInteger": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "Clock": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "period",
+        "remaining_ms",
+        "running",
+        "playing_ms",
+        "anchor_unix_ms"
+      ],
+      "properties": {
+        "period": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "remaining_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "running": {
+          "type": "boolean"
+        },
+        "playing_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "anchor_unix_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "period_playing_ms": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "period_spans": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "period",
+              "start_playing_ms",
+              "end_playing_ms"
+            ],
+            "properties": {
+              "period": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "start_playing_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "end_playing_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        }
+      }
+    },
+    "ClockAuthoritySet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "source",
+        "service_id"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "external"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "service_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "external"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "service_id": {
+                "$ref": "#/$defs/Identifier"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source": {
+                "type": "null"
+              },
+              "service_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ClockAuthority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "source",
+        "service_id",
+        "generation",
+        "last_source_sequence",
+        "feed_status",
+        "observed_at_ms",
+        "stale_at_ms"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "external"
+          ]
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "service_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "last_source_sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "feed_status": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "fresh",
+            "stale"
+          ]
+        },
+        "observed_at_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stale_at_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "external"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "source": {
+                "$ref": "#/$defs/Identifier"
+              },
+              "service_id": {
+                "$ref": "#/$defs/Identifier"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "source": {
+                "type": "null"
+              },
+              "service_id": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "external"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "generation": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              "feed_status": {
+                "type": "string",
+                "enum": [
+                  "fresh",
+                  "stale"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "feed_status": {
+                "const": "manual"
+              },
+              "observed_at_ms": {
+                "type": "null"
+              },
+              "stale_at_ms": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "external"
+              },
+              "observed_at_ms": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "mode",
+              "observed_at_ms"
+            ]
+          },
+          "then": {
+            "properties": {
+              "feed_status": {
+                "const": "stale"
+              },
+              "stale_at_ms": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "external"
+              },
+              "observed_at_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "mode",
+              "observed_at_ms"
+            ]
+          },
+          "then": {
+            "properties": {
+              "stale_at_ms": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TOISample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "player_id",
+        "total_toi_ms",
+        "current_shift_ms",
+        "completed_shifts",
+        "average_shift_ms",
+        "longest_shift_ms",
+        "toi_by_period"
+      ],
+      "properties": {
+        "player_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "total_toi_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "current_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_shifts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "average_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "longest_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "toi_by_period": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        }
+      }
+    },
+    "LivePlayer": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "id",
+        "team_id",
+        "name",
+        "number",
+        "position",
+        "eligible",
+        "location",
+        "total_toi_ms",
+        "current_shift_ms",
+        "completed_shifts",
+        "average_shift_ms",
+        "longest_shift_ms",
+        "toi_by_period"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "team_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 99
+        },
+        "position": {
+          "type": "string",
+          "enum": [
+            "C",
+            "LW",
+            "RW",
+            "D",
+            "G"
+          ]
+        },
+        "eligible": {
+          "type": "boolean"
+        },
+        "location": {
+          "type": "string",
+          "enum": [
+            "ON_ICE",
+            "BENCH",
+            "PENALTY_BOX"
+          ]
+        },
+        "total_toi_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "current_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "completed_shifts": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "average_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "longest_shift_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "toi_by_period": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[1-9][0-9]*$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "strength_toi": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "OnIce": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "home",
+        "away"
+      ],
+      "properties": {
+        "home": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "uniqueItems": true
+        },
+        "away": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "Strengths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "home",
+        "away"
+      ],
+      "properties": {
+        "home": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "away": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "LiveState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "sampled_at_ms",
+        "sample_seq",
+        "game",
+        "teams",
+        "players",
+        "lines",
+        "clock",
+        "clock_authority",
+        "on_ice",
+        "warnings",
+        "strengths"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sampled_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sample_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "game": {
+          "type": "object"
+        },
+        "teams": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "players": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LivePlayer"
+          }
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "clock": {
+          "$ref": "#/$defs/Clock"
+        },
+        "clock_authority": {
+          "$ref": "#/$defs/ClockAuthority"
+        },
+        "on_ice": {
+          "$ref": "#/$defs/OnIce"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "strengths": {
+          "$ref": "#/$defs/Strengths"
+        }
+      }
+    },
+    "V1Command": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "substitute",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_Substitution"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "move",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_Movement"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "clock",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_ClockControl"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "undo",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_Undo"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "correct",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_Correction"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "type",
+            "payload"
+          ],
+          "properties": {
+            "type": {
+              "const": "setup",
+              "title": "Type",
+              "type": "string"
+            },
+            "payload": {
+              "$ref": "#/$defs/V1_Setup"
+            }
+          }
+        }
+      ]
+    },
+    "V1_ClockControl": {
+      "additionalProperties": false,
+      "properties": {
+        "operation": {
+          "enum": [
+            "start",
+            "pause",
+            "set",
+            "advance"
+          ],
+          "title": "Operation",
+          "type": "string"
+        },
+        "period": {
+          "anyOf": [
+            {
+              "maximum": 20,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period"
+        },
+        "remaining_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Remaining Ms"
+        },
+        "period_lengths_ms": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period Lengths Ms"
+        }
+      },
+      "required": [
+        "operation"
+      ],
+      "title": "ClockControl",
+      "type": "object"
+    },
+    "V1_Correction": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "replacement": {
+          "discriminator": {
+            "mapping": {
+              "move": "#/$defs/V1_MoveReplacement",
+              "substitute": "#/$defs/V1_SubstituteReplacement"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/V1_SubstituteReplacement"
+            },
+            {
+              "$ref": "#/$defs/V1_MoveReplacement"
+            }
+          ],
+          "title": "Replacement"
+        }
+      },
+      "required": [
+        "event_id",
+        "replacement"
+      ],
+      "title": "Correction",
+      "type": "object"
+    },
+    "V1_GameConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "competition": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Competition"
+        },
+        "scheduled_start": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Scheduled Start"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "SETUP",
+                "LIVE",
+                "COMPLETED"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Status"
+        },
+        "period_lengths_ms": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Period Lengths Ms"
+        },
+        "home_name": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Home Name"
+        },
+        "away_name": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Away Name"
+        }
+      },
+      "title": "GameConfiguration",
+      "type": "object"
+    },
+    "V1_LineConfiguration": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "team_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Team Id",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "FORWARD",
+            "DEFENCE",
+            "SPECIAL"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "player_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 40,
+          "title": "Player Ids",
+          "type": "array"
+        },
+        "slots": {
+          "anyOf": [
+            {
+              "additionalProperties": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Slots"
+        },
+        "line_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Line Number"
+        }
+      },
+      "required": [
+        "id",
+        "team_id",
+        "name",
+        "kind"
+      ],
+      "title": "LineConfiguration",
+      "type": "object"
+    },
+    "V1_MoveReplacement": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "move",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/V1_Movement"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "MoveReplacement",
+      "type": "object"
+    },
+    "V1_Movement": {
+      "additionalProperties": false,
+      "properties": {
+        "player_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Player Id",
+          "type": "string"
+        },
+        "to": {
+          "enum": [
+            "ON_ICE",
+            "BENCH",
+            "PENALTY_BOX"
+          ],
+          "title": "To",
+          "type": "string"
+        }
+      },
+      "required": [
+        "player_id",
+        "to"
+      ],
+      "title": "Movement",
+      "type": "object"
+    },
+    "V1_RosterPatch": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "team_id": {
+          "anyOf": [
+            {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Team Id"
+        },
+        "name": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Name"
+        },
+        "number": {
+          "anyOf": [
+            {
+              "maximum": 99,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Number"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "enum": [
+                "C",
+                "LW",
+                "RW",
+                "D",
+                "G"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Position"
+        },
+        "eligible": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eligible"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "enum": [
+                "ON_ICE",
+                "BENCH",
+                "PENALTY_BOX"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Location"
+        },
+        "external_id": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "External Id"
+        },
+        "assigned_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "GK",
+                "G",
+                "LD",
+                "RD",
+                "D",
+                "LW",
+                "C",
+                "RW"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Assigned Role"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "RosterPatch",
+      "type": "object"
+    },
+    "V1_Setup": {
+      "additionalProperties": false,
+      "properties": {
+        "players": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/V1_RosterPatch"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Players"
+        },
+        "lines": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/V1_LineConfiguration"
+              },
+              "maxItems": 100,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Lines"
+        },
+        "game": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/V1_GameConfiguration"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "title": "Setup",
+      "type": "object"
+    },
+    "V1_SubstituteReplacement": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "substitute",
+          "title": "Type",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/V1_Substitution"
+        }
+      },
+      "required": [
+        "type",
+        "payload"
+      ],
+      "title": "SubstituteReplacement",
+      "type": "object"
+    },
+    "V1_Substitution": {
+      "additionalProperties": false,
+      "properties": {
+        "team_id": {
+          "maxLength": 100,
+          "minLength": 1,
+          "title": "Team Id",
+          "type": "string"
+        },
+        "outgoing_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Outgoing Ids",
+          "type": "array"
+        },
+        "incoming_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Incoming Ids",
+          "type": "array"
+        },
+        "at_playing_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "At Playing Ms"
+        }
+      },
+      "required": [
+        "team_id"
+      ],
+      "title": "Substitution",
+      "type": "object"
+    },
+    "V1_Undo": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Event Id"
+        }
+      },
+      "title": "Undo",
+      "type": "object"
+    },
+    "AuthorityCommand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "payload"
+      ],
+      "properties": {
+        "type": {
+          "const": "clock.authority.set"
+        },
+        "payload": {
+          "$ref": "#/$defs/ClockAuthoritySet"
+        }
+      }
+    },
+    "Command": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/V1Command"
+        },
+        {
+          "$ref": "#/$defs/AuthorityCommand"
+        }
+      ]
+    },
+    "Change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "entity",
+        "id",
+        "operation",
+        "before",
+        "after"
+      ],
+      "properties": {
+        "entity": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "operation": {
+          "type": "string",
+          "enum": [
+            "upsert",
+            "delete"
+          ]
+        },
+        "before": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "after": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "operation": {
+                "const": "delete"
+              }
+            },
+            "required": [
+              "operation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "after": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "after": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "JournalRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "event_id",
+        "journal_generation",
+        "journal_seq",
+        "cursor",
+        "version",
+        "kind",
+        "request_id",
+        "actor",
+        "recorded_at_ms",
+        "command",
+        "changes",
+        "live_state"
+      ],
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "journal_generation": {
+          "$ref": "#/$defs/UUID"
+        },
+        "journal_seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "kind": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "request_id": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 100
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "actor": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "recorded_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "command": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "changes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Change"
+          }
+        },
+        "live_state": {
+          "$ref": "#/$defs/LiveState"
+        }
+      }
+    },
+    "SessionOpenData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_id",
+        "journal_mode",
+        "tick_hz"
+      ],
+      "properties": {
+        "client_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "journal_mode": {
+          "type": "string",
+          "enum": [
+            "now",
+            "beginning",
+            "resume"
+          ]
+        },
+        "after_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "tick_hz": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            5,
+            10
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "journal_mode": {
+                "const": "resume"
+              }
+            },
+            "required": [
+              "journal_mode"
+            ]
+          },
+          "then": {
+            "required": [
+              "after_cursor"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "after_cursor"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "CommandSubmitData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "expected_version",
+        "command"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "command": {
+          "$ref": "#/$defs/Command"
+        }
+      }
+    },
+    "ClockObserveData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "expected_version",
+        "authority_generation",
+        "source",
+        "source_sequence",
+        "observed_at_ms",
+        "period",
+        "remaining_ms",
+        "running"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "expected_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "authority_generation": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "source": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "source_sequence": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "observed_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "period": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        },
+        "remaining_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "running": {
+          "type": "boolean"
+        }
+      }
+    },
+    "HeartbeatData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nonce",
+        "client_sent_at_ms"
+      ],
+      "properties": {
+        "nonce": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "client_sent_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "SessionWelcomeData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "client_id",
+        "permissions",
+        "journal_generation",
+        "oldest_cursor",
+        "high_water_cursor",
+        "tick_hz",
+        "connection_expires_at_ms",
+        "heartbeat_interval_ms",
+        "pong_timeout_ms",
+        "max_command_bytes",
+        "max_server_message_bytes",
+        "max_in_flight_commands",
+        "auth_expires_at_ms",
+        "queue_max_messages",
+        "queue_max_bytes",
+        "send_timeout_ms",
+        "journal_retention_days",
+        "rate_limits"
+      ],
+      "properties": {
+        "client_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "permissions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Identifier"
+          },
+          "uniqueItems": true
+        },
+        "journal_generation": {
+          "$ref": "#/$defs/UUID"
+        },
+        "oldest_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "high_water_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "tick_hz": {
+          "type": "integer",
+          "enum": [
+            0,
+            1,
+            2,
+            5,
+            10
+          ]
+        },
+        "connection_expires_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "heartbeat_interval_ms": {
+          "const": 15000
+        },
+        "pong_timeout_ms": {
+          "const": 5000
+        },
+        "max_command_bytes": {
+          "const": 65536
+        },
+        "max_server_message_bytes": {
+          "const": 1048576
+        },
+        "max_in_flight_commands": {
+          "const": 1
+        },
+        "auth_expires_at_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "queue_max_messages": {
+          "const": 128
+        },
+        "queue_max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 67108864
+        },
+        "send_timeout_ms": {
+          "const": 5000
+        },
+        "journal_retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3650
+        },
+        "rate_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "commands_per_second",
+            "commands_burst",
+            "clock_observations_per_second",
+            "clock_observations_burst"
+          ],
+          "properties": {
+            "commands_per_second": {
+              "const": 10
+            },
+            "commands_burst": {
+              "const": 20
+            },
+            "clock_observations_per_second": {
+              "const": 2
+            },
+            "clock_observations_burst": {
+              "const": 5
+            }
+          }
+        }
+      }
+    },
+    "StateSnapshotData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reason",
+        "baseline_cursor",
+        "version",
+        "state"
+      ],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "initial",
+            "requested",
+            "resync"
+          ]
+        },
+        "baseline_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "state": {
+          "$ref": "#/$defs/LiveState"
+        }
+      }
+    },
+    "EventRecordedData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replay",
+        "record"
+      ],
+      "properties": {
+        "replay": {
+          "type": "boolean"
+        },
+        "record": {
+          "$ref": "#/$defs/JournalRecord"
+        }
+      }
+    },
+    "StreamReadyData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "through_cursor",
+        "version"
+      ],
+      "properties": {
+        "through_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "LiveTickData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "version",
+        "sampled_at_ms",
+        "sample_seq",
+        "clock",
+        "clock_authority",
+        "toi",
+        "on_ice",
+        "warnings",
+        "strengths"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sampled_at_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "sample_seq": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "clock": {
+          "$ref": "#/$defs/Clock"
+        },
+        "clock_authority": {
+          "$ref": "#/$defs/ClockAuthority"
+        },
+        "toi": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/TOISample"
+          }
+        },
+        "on_ice": {
+          "$ref": "#/$defs/OnIce"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "strengths": {
+          "$ref": "#/$defs/Strengths"
+        }
+      }
+    },
+    "CommandAckData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "committed_version",
+        "current_version",
+        "journal_cursor",
+        "duplicate",
+        "journal_available"
+      ],
+      "properties": {
+        "request_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "committed_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "current_version": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "journal_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "duplicate": {
+          "type": "boolean"
+        },
+        "journal_available": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "journal_cursor": {
+                "type": "null"
+              }
+            },
+            "required": [
+              "journal_cursor"
+            ]
+          },
+          "then": {
+            "properties": {
+              "journal_available": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "CommandErrorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_MESSAGE",
+        "UNSUPPORTED_PROTOCOL",
+        "SESSION_NOT_OPEN",
+        "SESSION_NOT_READY",
+        "FORBIDDEN",
+        "GAME_NOT_FOUND",
+        "VERSION_CONFLICT",
+        "IDEMPOTENCY_CONFLICT",
+        "INVALID_COMMAND",
+        "AUTHORITY_CONFLICT",
+        "CLOCK_NOT_OWNER",
+        "CLOCK_OUT_OF_ORDER",
+        "CLOCK_STALE",
+        "CLOCK_FUTURE",
+        "RATE_LIMITED",
+        "TOO_MANY_IN_FLIGHT",
+        "MESSAGE_TOO_LARGE",
+        "INTERNAL_ERROR",
+        "JOURNAL_UNAVAILABLE",
+        "OUTCOME_UNKNOWN"
+      ]
+    },
+    "CommandErrorData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "code",
+        "detail",
+        "retryable",
+        "resync_required",
+        "current_version",
+        "retry_after_ms"
+      ],
+      "properties": {
+        "request_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UUID"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "code": {
+          "$ref": "#/$defs/CommandErrorCode"
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "retryable": {
+          "type": "boolean"
+        },
+        "resync_required": {
+          "type": "boolean"
+        },
+        "current_version": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retry_after_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ReplayRequiredData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "after_cursor",
+        "through_cursor",
+        "max_records",
+        "max_bytes"
+      ],
+      "properties": {
+        "after_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "through_cursor": {
+          "$ref": "#/$defs/Cursor"
+        },
+        "max_records": {
+          "const": 1000
+        },
+        "max_bytes": {
+          "const": 8388608
+        }
+      }
+    },
+    "SessionErrorCode": {
+      "type": "string",
+      "enum": [
+        "INVALID_MESSAGE",
+        "UNSUPPORTED_PROTOCOL",
+        "AUTHENTICATION_FAILED",
+        "AUTHENTICATION_EXPIRED",
+        "AUTHORIZATION_FAILED",
+        "SESSION_ALREADY_OPEN",
+        "SESSION_NOT_OPEN",
+        "CURSOR_INVALID",
+        "CURSOR_EXPIRED",
+        "CURSOR_WRONG_GAME",
+        "CURSOR_WRONG_GENERATION",
+        "CURSOR_AHEAD",
+        "JOURNAL_UNAVAILABLE",
+        "SERVER_OVERLOADED",
+        "HEARTBEAT_TIMEOUT"
+      ]
+    },
+    "SessionErrorData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "detail",
+        "oldest_cursor",
+        "high_water_cursor"
+      ],
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/SessionErrorCode"
+        },
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "oldest_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "high_water_cursor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Cursor"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "ClientSessionOpen": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "session.open"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/SessionOpenData"
+        }
+      }
+    },
+    "ClientCommandSubmit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "command.submit"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/CommandSubmitData"
+        }
+      }
+    },
+    "ClientClockObserve": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "clock.observe"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/ClockObserveData"
+        }
+      }
+    },
+    "ClientStateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "state.request"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    "ClientPing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "ping"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/HeartbeatData"
+        }
+      }
+    },
+    "ClientPong": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "pong"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/HeartbeatData"
+        }
+      }
+    },
+    "ServerSessionWelcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "session.welcome"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/SessionWelcomeData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerStateSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "state.snapshot"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/StateSnapshotData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerEventRecorded": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "event.recorded"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/EventRecordedData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerStreamReady": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "stream.ready"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/StreamReadyData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerLiveTick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "live.tick"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/LiveTickData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerCommandAck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "command.ack"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/CommandAckData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerCommandError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "command.error"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/CommandErrorData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerReplayRequired": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "replay.required"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/ReplayRequiredData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerSessionError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "session.error"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/SessionErrorData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerPing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "ping"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/HeartbeatData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ServerPong": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "protocol",
+        "type",
+        "message_id",
+        "game_id",
+        "data",
+        "connection_id",
+        "server_epoch",
+        "seq",
+        "server_time_ms"
+      ],
+      "properties": {
+        "protocol": {
+          "const": 2
+        },
+        "type": {
+          "const": "pong"
+        },
+        "message_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "game_id": {
+          "$ref": "#/$defs/Identifier"
+        },
+        "data": {
+          "$ref": "#/$defs/HeartbeatData"
+        },
+        "connection_id": {
+          "$ref": "#/$defs/UUID"
+        },
+        "server_epoch": {
+          "$ref": "#/$defs/UUID"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "server_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      }
+    },
+    "ClientMessage": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ClientSessionOpen"
+        },
+        {
+          "$ref": "#/$defs/ClientCommandSubmit"
+        },
+        {
+          "$ref": "#/$defs/ClientClockObserve"
+        },
+        {
+          "$ref": "#/$defs/ClientStateRequest"
+        },
+        {
+          "$ref": "#/$defs/ClientPing"
+        },
+        {
+          "$ref": "#/$defs/ClientPong"
+        }
+      ]
+    },
+    "ServerMessage": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ServerSessionWelcome"
+        },
+        {
+          "$ref": "#/$defs/ServerStateSnapshot"
+        },
+        {
+          "$ref": "#/$defs/ServerEventRecorded"
+        },
+        {
+          "$ref": "#/$defs/ServerStreamReady"
+        },
+        {
+          "$ref": "#/$defs/ServerLiveTick"
+        },
+        {
+          "$ref": "#/$defs/ServerCommandAck"
+        },
+        {
+          "$ref": "#/$defs/ServerCommandError"
+        },
+        {
+          "$ref": "#/$defs/ServerReplayRequired"
+        },
+        {
+          "$ref": "#/$defs/ServerSessionError"
+        },
+        {
+          "$ref": "#/$defs/ServerPing"
+        },
+        {
+          "$ref": "#/$defs/ServerPong"
+        }
+      ]
+    }
+  }
+}

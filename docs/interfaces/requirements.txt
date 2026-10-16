@@ -1,0 +1,3 @@
+# Optional, offline contract-checking tools only; not application dependencies.
+# Release verified at https://pypi.org/project/jsonschema/4.26.0/.
+jsonschema==4.26.0

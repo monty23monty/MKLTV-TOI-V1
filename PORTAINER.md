@@ -112,6 +112,8 @@ Use one management method for a running stack. A stack created through the Docke
 
 ## HTTPS / an existing reverse proxy
 
+For external clock services, live player TOI, on-ice lineups and a recorded-change feed, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). Current integrations use HTTP inputs plus the existing WebSocket output through this frontend port; the documented duplex v2/replay protocol is proposed backend work and is not enabled by deploying this stack.
+
 Point your existing reverse proxy at the frontend port and enable WebSocket upgrade forwarding. Set `TOI_CORS_ORIGINS` to the exact external HTTPS origin. The explicit origin matters when HTTPS terminates before the container's HTTP listener. Keep database/backend ports private. A public deployment should use HTTPS so the operator token is transported over TLS.
 
 The frontend uses relative `/api` URLs; do not enter a backend container name, `localhost:8000`, or a separate API URL into Safari. Docker service DNS names are internal to the containers. nginx re-resolves the backend through Docker DNS after container recreation.
