@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "urn:lightning-tv:toi:service-stream:v2",
   "title": "Lightning TV TOI service-stream v2",
-  "description": "Implemented in release 2.0.0 behind TOI_STREAM_ENABLED with scoped service authentication. See SERVICE_INTERFACE.md for semantic ownership, journal and deployment contracts.",
+  "description": "Implemented in release 2.0.1 behind TOI_STREAM_ENABLED with scoped service authentication. See SERVICE_INTERFACE.md for semantic ownership, journal and deployment contracts.",
   "$comment": "Validate with Draft 2020-12 and UUID format assertions. This schema checks message structure, not authentication, permissions, cursor signatures, byte limits, journal ordering, authority ownership or session-state transitions. V1_* definitions are generated from current backend/toi/schemas.py and checked by scripts/validate_service_interface.py --check-v1. LiveState intentionally omits unbounded event/shift histories.",
   "oneOf": [
     {

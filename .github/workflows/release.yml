@@ -62,6 +62,8 @@ jobs:
           fi
       - name: Run backend and contract tests
         env:
+          TOI_AUTH_TOKEN: ''
+          TOI_OPERATOR_TOKENS: ''
           TOI_STREAM_ENABLED: 'false'
           TOI_SERVICE_TOKENS: ''
         run: |
@@ -204,6 +206,7 @@ jobs:
           See UPDATING.md for the one-time Portainer migration and subsequent tag-only updates.
           If GHCR packages require login, the image bundle is a public alternative: verify SHA256SUMS, then load it on the target Docker host.
           Match data remains in the existing PostgreSQL volume; retain the stack name and database credentials.
+          Migration 0003 adds the service journal and clock fencing. Returning to a pre-v2 writer requires restoring the checked pre-upgrade backup; do not remove journal or ownership metadata manually.
           EOF
           gh release create "$TOI_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "Lightning TV TOI $TOI_RELEASE_TAG" --notes-file release-notes.md \

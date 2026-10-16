@@ -59,7 +59,7 @@ def test_clock_sources_do_not_expose_tokens_or_allow_team_operator(client):
 
 def test_health_exposes_version_and_readiness_separates_clock_services(client):
     health = client.get("/health").json()
-    assert health["version"] == "2.0.0" and health["api_versions"] == ["v1", "v2"]
+    assert health["version"] == "2.0.1" and health["api_versions"] == ["v1", "v2"]
     assert health["revision"]
     ready = client.get("/ready").json()
     assert ready["database"] == "ok"

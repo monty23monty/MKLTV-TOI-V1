@@ -21,7 +21,7 @@ services:
     stop_grace_period: 30s
 
   backend:
-    image: ${TOI_IMAGE_REGISTRY:-ghcr.io/monty23monty}/mkltv-toi-backend:${TOI_RELEASE_TAG:-v2.0.0}
+    image: ${TOI_IMAGE_REGISTRY:-ghcr.io/monty23monty}/mkltv-toi-backend:${TOI_RELEASE_TAG:-v2.0.1}
     pull_policy: ${TOI_PULL_POLICY:-missing}
     environment:
       TOI_POSTGRES_HOST: db
@@ -62,7 +62,7 @@ services:
     stop_grace_period: 30s
 
   frontend:
-    image: ${TOI_IMAGE_REGISTRY:-ghcr.io/monty23monty}/mkltv-toi-frontend:${TOI_RELEASE_TAG:-v2.0.0}
+    image: ${TOI_IMAGE_REGISTRY:-ghcr.io/monty23monty}/mkltv-toi-frontend:${TOI_RELEASE_TAG:-v2.0.1}
     pull_policy: ${TOI_PULL_POLICY:-missing}
     ports:
       - "${TOI_BIND_ADDRESS:-0.0.0.0}:${TOI_FRONTEND_PORT:-8080}:80"

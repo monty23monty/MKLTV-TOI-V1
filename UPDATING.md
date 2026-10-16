@@ -26,8 +26,8 @@ Publication happens only after tests and stack checks pass. Version and full com
 The release workflow publishes these exact names:
 
 ```text
-ghcr.io/monty23monty/mkltv-toi-backend:v2.0.0
-ghcr.io/monty23monty/mkltv-toi-frontend:v2.0.0
+ghcr.io/monty23monty/mkltv-toi-backend:v2.0.1
+ghcr.io/monty23monty/mkltv-toi-frontend:v2.0.1
 ```
 
 Later releases use their own version tags and `sha-FULL-COMMIT` tags. Existing version tags are not overwritten by the pipeline. A successful GitHub Release includes `release-manifest.json`, image IDs, the Git commit, checksums, stack files and a Docker image bundle. The manifest states whether registry publishing and **anonymous image pulls were actually verified**. A private GHCR package is not described as publicly pullable merely because the source repository is public.
@@ -63,8 +63,8 @@ Anonymous checks on a Linux machine with Docker (a temporary Docker config avoid
 
 ```bash
 mkdir -p /tmp/toi-anonymous-docker
-docker --config /tmp/toi-anonymous-docker pull ghcr.io/monty23monty/mkltv-toi-backend:v2.0.0
-docker --config /tmp/toi-anonymous-docker pull ghcr.io/monty23monty/mkltv-toi-frontend:v2.0.0
+docker --config /tmp/toi-anonymous-docker pull ghcr.io/monty23monty/mkltv-toi-backend:v2.0.1
+docker --config /tmp/toi-anonymous-docker pull ghcr.io/monty23monty/mkltv-toi-frontend:v2.0.1
 ```
 
 Portainer can alternatively use a GHCR registry entry with a classic GitHub token restricted to `read:packages`. Do not enter your operator token or database password as a registry password. The public package or archive approach avoids needing a registry credential on the server.
@@ -79,7 +79,7 @@ Set or retain these stack environment variables:
 
 | Variable | Setting |
 | --- | --- |
-| `TOI_RELEASE_TAG` | `v2.0.0`, or the exact published version selected |
+| `TOI_RELEASE_TAG` | `v2.0.1`, or the exact published version selected |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Keep the existing values |
 | `TOI_AUTH_TOKEN`, `TOI_OPERATOR_TOKENS` | Keep existing operator credentials |
 | `TOI_CORS_ORIGINS` | Keep the exact iPad dashboard origin, including scheme and port |
@@ -107,7 +107,7 @@ The backend applies database migrations before it starts serving. One API worker
 ## Every later application update
 
 1. Read the release notes, pause tracking and take a checked database backup.
-2. In **Stacks → toi-v1 → Editor**, change **only** `TOI_RELEASE_TAG` to the selected published version, for example `v2.0.1`.
+2. In **Stacks → toi-v1 → Editor**, change **only** `TOI_RELEASE_TAG` to the selected published version, for example `v2.0.2`.
 3. Registry mode: **Update the stack** with **Re-pull image** enabled. Archive mode: load the new bundle first, retain `TOI_PULL_POLICY=never`, and update with re-pulling disabled.
 4. Wait for health checks, verify the reported version and resumed match, then resume tracking.
 
@@ -115,19 +115,19 @@ There is no need to build, find intermediate images, or add tags in Portainer. U
 
 ## Registry-independent image loading
 
-Every successfully published release also includes `mkltoi-v2.0.0-linux-amd64.tar.gz` and `SHA256SUMS`. These contain both **final runtime images with their tags**, not source code or intermediate Node stages. Docker's [image save](https://docs.docker.com/reference/cli/docker/image/save/) and [image load](https://docs.docker.com/reference/cli/docker/image/load/) preserve the names, tags, labels and runtime configuration.
+Every successfully published release also includes `mkltoi-v2.0.1-linux-amd64.tar.gz` and `SHA256SUMS`. These contain both **final runtime images with their tags**, not source code or intermediate Node stages. Docker's [image save](https://docs.docker.com/reference/cli/docker/image/save/) and [image load](https://docs.docker.com/reference/cli/docker/image/load/) preserve the names, tags, labels and runtime configuration.
 
 Download the release's `load-release-images.sh` asset and run it **on the same Docker host/environment Portainer manages**:
 
 ```bash
-sh load-release-images.sh v2.0.0
+sh load-release-images.sh v2.0.1
 ```
 
 The script downloads the public bundle and checksums, verifies SHA-256 before loading, checks both embedded version labels, and never edits a running stack or database. It requires Linux amd64, Docker, curl and GNU sha256sum. You can also download the archive and checksums manually and run:
 
 ```bash
 sha256sum --check --ignore-missing SHA256SUMS
-docker image load --input mkltoi-v2.0.0-linux-amd64.tar.gz
+docker image load --input mkltoi-v2.0.1-linux-amd64.tar.gz
 ```
 
 Set `TOI_PULL_POLICY=never`, select the matching `TOI_RELEASE_TAG`, and leave Portainer's re-pull option disabled. The only image that may still need a registry pull is PostgreSQL if it is not already cached.
@@ -147,6 +147,8 @@ Skip `pull` and retain `TOI_PULL_POLICY=never` when using loaded image archives.
 
 ## Recovery and rollback
 
+Release 2.0.1 adds migration `0003` and persisted clock-ownership/journal metadata. A return to a pre-v2 application image requires the checked pre-upgrade database backup; this release does not certify running an old writer against an activated v2 timeline. Prefer a subsequent v2 patch release for an application fix. Never manually drop journal tables or remove ownership metadata to bypass a fence.
+
 If an upgrade fails, leave tracking paused. Check backend migration/database logs and frontend nginx logs. A failing new container does not erase the named volume. Avoid repeatedly changing credentials or recreating the stack under a new name.
 
 For an application rollback, set the prior published `TOI_RELEASE_TAG` and update the stack. The backend and frontend must use the same release. Do this only when the release notes say the existing database schema remains compatible. Database migrations are not automatically reversed by selecting an old image.
@@ -157,7 +159,7 @@ When restoring a v2 database, run the documented offline `python -m toi.admin ro
 
 ## Publishing future releases
 
-Maintainers update `VERSION`, the backend's development version and relevant release notes, run the checks, commit, then push a matching Git tag, for example `v2.0.1`. The [release workflow](.github/workflows/release.yml) checks the tag/version match, runs backend/frontend/contract tests, builds the two images, exercises v1/v2 through nginx with PostgreSQL and checks persistence across recreation. Only then does it publish version/commit tags and a GitHub Release. Manual workflow dispatch validates the selected revision without publishing it.
+Maintainers update `VERSION`, the backend's development version and relevant release notes, run the checks, commit, then push a matching Git tag, for example `v2.0.2`. The [release workflow](.github/workflows/release.yml) checks the tag/version match, runs backend/frontend/contract tests, builds the two images, exercises v1/v2 through nginx with PostgreSQL and checks persistence across recreation. Only then does it publish version/commit tags and a GitHub Release. Manual workflow dispatch validates the selected revision without publishing it.
 
 The workflow needs repository `contents: write` and `packages: write` using the scoped `GITHUB_TOKEN`; no registry token is baked into an image. The first publication may require the one-time package visibility change above. A failed registry publication is recorded in the manifest, and the verified public archive remains available. Release archives are loaded again in CI and checked for the exact source revision before being published. Tags/releases are treated as immutable: publish a new version rather than replacing an existing one.
 

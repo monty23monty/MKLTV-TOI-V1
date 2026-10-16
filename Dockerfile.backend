@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-ARG VERSION=2.0.0
+ARG VERSION=2.0.1
 ARG VCS_REF=development
 LABEL org.opencontainers.image.title="Lightning TV TOI backend" \
     org.opencontainers.image.source="https://github.com/monty23monty/MKLTV-TOI-V1" \

@@ -5,7 +5,7 @@ set -eu
 
 release_tag=${1:-}
 if ! printf '%s\n' "$release_tag" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
-    printf 'Usage: sh scripts/load-release-images.sh v2.0.0\n' >&2
+    printf 'Usage: sh scripts/load-release-images.sh v2.0.1\n' >&2
     exit 2
 fi
 case "$(uname -m)" in

@@ -1,6 +1,6 @@
 # Service stream contract tools
 
-**Protocol v2, implemented in release 2.0.0.** Start with [SERVICE_INTERFACE.md](../../SERVICE_INTERFACE.md) and enable/configure service streaming as documented there. Legacy endpoints remain in [API.md](../../API.md).
+**Protocol v2, implemented in release 2.0.1.** Start with [SERVICE_INTERFACE.md](../../SERVICE_INTERFACE.md) and enable/configure service streaming as documented there. Legacy endpoints remain in [API.md](../../API.md).
 
 | File | Purpose |
 | --- | --- |

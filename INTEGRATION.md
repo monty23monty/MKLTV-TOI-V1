@@ -170,7 +170,7 @@ Clock corrections reanchor the displayed countdown and preserve accumulated play
 
 ## Consume statistics and live events
 
-For the full external-service inventory and the implemented sustained duplex protocol, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). Release 2.0.0 implements replayable recorded changes and fenced clock ownership, alongside the v1 HTTP/WebSocket pattern below.
+For the full external-service inventory and the implemented sustained duplex protocol, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). Release 2.0.1 implements replayable recorded changes and fenced clock ownership, alongside the v1 HTTP/WebSocket pattern below.
 
 Fetch `GET /api/v1/games/{id}/state` on connection and after any conflict. Subscribe to `/api/v1/games/{id}/ws` for versioned live messages. Initial and mutation messages include a full `state`. Idle `clock.tick` messages instead contain `clock`, a `toi` array keyed by `player_id`, `warnings` and `strengths`; they omit roster, event and shift histories. Merge a tick only when its version matches the loaded snapshot. Discard older versions; if a tick has a newer version, fetch `/state` before merging it because a movement may have been missed. Reconnect with exponential backoff and fetch the current snapshot.
 

@@ -1,6 +1,6 @@
 # External service interface: clock, player TOI and recorded changes
 
-**Status: implemented in release 2.0.0.** The v2 service API is additive: the existing iPad interface and v1 endpoints remain supported. Enable `TOI_STREAM_ENABLED=true` and configure scoped `TOI_SERVICE_TOKENS` to use it. The [release/update guide](UPDATING.md) explains deployment of the prebuilt images. Sections 1–2 inventory the legacy v1 integration; sections 3 onward define v2. Latency/capacity numbers in section 13 remain acceptance targets unless a measured result is explicitly identified in [VALIDATION.md](VALIDATION.md).
+**Status: implemented in release 2.0.1.** The v2 service API is additive: the existing iPad interface and v1 endpoints remain supported. Enable `TOI_STREAM_ENABLED=true` and configure scoped `TOI_SERVICE_TOKENS` to use it. The [release/update guide](UPDATING.md) explains deployment of the prebuilt images. Sections 1–2 inventory the legacy v1 integration; sections 3 onward define v2. Latency/capacity numbers in section 13 remain acceptance targets unless a measured result is explicitly identified in [VALIDATION.md](VALIDATION.md).
 
 The requirement is a sustained two-way connection for an authoritative clock service, individual player TOI, the current on-ice players and their times, and an updating feed of everything recorded for a match. The design separates live calculated values from durable recorded changes so that neither is mistaken for the other.
 
@@ -152,7 +152,7 @@ The core does not send arbitrary executable instructions to other services. It s
 
 ## 4. Endpoints and transport
 
-**These v2 paths are implemented in the 2.0.0 backend.** HTTP routes return 404 while streaming is disabled; enabled routes require a scoped service credential. Existing pre-v2 images do not gain these endpoints by changing Compose alone.
+**These v2 paths are implemented in the 2.0.1 backend.** HTTP routes return 404 while streaming is disabled; enabled routes require a scoped service credential. Existing pre-v2 images do not gain these endpoints by changing Compose alone.
 
 | Endpoint | Contract |
 | --- | --- |
@@ -567,7 +567,7 @@ Protocol v2 fixes the 64 KiB/1 MiB message limits, 15-second/5-second heartbeat 
 
 `/health` checks API/database availability and reports the application version/revision. `/ready` also reports dispatcher status, last successful poll and last error timestamps. Its service fields are diagnostic: a database check passing returns `status:"ready"` even if the dispatcher is stopped, so monitoring must inspect `services.dispatcher_running` and poll progress. Service credentials remain independently required; an empty token mapping rejects service access. Clock-feed freshness is a per-game status, not equivalent to database failure. The clock bridge is an optional separate service/adapter: a source outage leaves the operator's manual controls available while the backend/database remain healthy.
 
-Deploy matching 2.0.0 backend/frontend images to install the API and migration 0003. The existing clock dialog now lists configured clock services, shows stale/fresh/manual status and supports explicit handover. Manual start/pause/set/advance takes ownership back; the operator screen retains its quiet layout. An already-built v1 container still needs the image update described in [UPDATING.md](UPDATING.md).
+Deploy matching 2.0.1 backend/frontend images to install the API and migration 0003. The existing clock dialog now lists configured clock services, shows stale/fresh/manual status and supports explicit handover. Manual start/pause/set/advance takes ownership back; the operator screen retains its quiet layout. An already-built v1 container still needs the image update described in [UPDATING.md](UPDATING.md).
 
 ## 13. Latency, capacity and observability
 

@@ -2,7 +2,7 @@
 
 import os
 
-APP_VERSION = os.getenv("TOI_APP_VERSION", "2.0.0")
+APP_VERSION = os.getenv("TOI_APP_VERSION", "2.0.1")
 APP_REVISION = os.getenv("TOI_APP_REVISION", "development")
 
 

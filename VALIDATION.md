@@ -131,7 +131,7 @@ The existing API regression module passed **15 tests** (one existing Starlette/h
 
 ## V2 runtime and release validation
 
-Release 2.0.0 implements the previously documented protocol. The earlier design-only status above is retained as a historical record and is superseded by this section.
+Release 2.0.1 implements the previously documented protocol. The earlier design-only status above is retained as a historical record and is superseded by this section.
 
 Native validation passed **338 backend tests**, including storage/journal, clock fencing, service authorization, real ASGI duplex sessions, replay barriers, strict frame validation and bounded shared admission. The last WebSocket overload refinement also passed the 18 coordinator/v1 API regressions. **79 frontend tests**, strict TypeScript and the production Vite build passed, including operator clock-source selection, lost-response retries and stale/disconnected interpolation. Ruff passed. The contract checker passed all **41 positive / 39 negative examples**, 12 matching v1 payload definitions and six command types. One existing Starlette/httpx deprecation warning remains.
 
@@ -157,5 +157,7 @@ Delivered **600/600 expected records**, with zero frame/journal sequence gaps; e
 ### Update architecture checks and limits
 
 Both images carry a matching version and full source revision. CI exercises PostgreSQL migration/startup, nginx routing and persistence before publication; the release pipeline additionally saves/reloads the image bundle and verifies embedded revisions. `release-manifest.json` records actual registry publication and anonymous pull outcomes. [UPDATING.md](UPDATING.md) documents backup, retained `toi-v1_postgres_data`, version-tag updates, archive fallback, compatible rollback and offline generation rotation after restore.
+
+The initial `v2.0.0` tag failed before image publication because the release job's integration-test operator credential leaked into two demo-mode unit tests. The unit-test step now explicitly clears operator/service credentials and disables streaming unless a test enables it. The pushed tag was retained; `v2.0.1` is the first installable release.
 
 The user's Portainer host was not accessed or upgraded. Linux amd64 container validation does not imply ARM64 support; the first bundle is amd64 only. The sustained three-hour reference soak, production monitoring and physical iPad Safari validation remain deployment checks. No unattended production update is configured.
