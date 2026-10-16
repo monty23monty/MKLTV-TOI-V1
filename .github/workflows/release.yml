@@ -1,0 +1,221 @@
+name: Test and publish versioned release
+
+on:
+  push:
+    tags: ['v2.*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      COMPOSE_PROJECT_NAME: mkltoi-release-ci
+      TOI_IMAGE_REGISTRY: ghcr.io/monty23monty
+      TOI_PULL_POLICY: never
+      TOI_BIND_ADDRESS: 127.0.0.1
+      TOI_FRONTEND_PORT: '18080'
+      POSTGRES_DB: lightning_toi
+      POSTGRES_USER: toi
+      POSTGRES_PASSWORD: 'ci-db@pass:/?#%$'
+      TOI_AUTH_TOKEN: ci-operator-token
+      TOI_CORS_ORIGINS: http://127.0.0.1:18080
+      TOI_STREAM_ENABLED: 'true'
+      TOI_SERVICE_TOKENS: '{"ci-service-token":{"service_id":"ci-service","game_ids":["*"],"permissions":["stream:read","journal:read","players:write","clock:write","clock:control","clock:authority","history:write","setup:write"],"team_ids":null,"clock_sources":["ci-scoreboard"],"expires_at_ms":null}}'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Validate immutable release version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version=$(tr -d '\r\n' < VERSION)
+          [[ "$version" =~ ^2\.[0-9]+\.[0-9]+$ ]]
+          tag="v$version"
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then
+            test "$GITHUB_REF_NAME" = "$tag"
+          else
+            echo 'Manual runs validate only; publication requires a matching v2.x.y Git tag.'
+          fi
+          echo "TOI_RELEASE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "RELEASE_VERSION=$version" >> "$GITHUB_ENV"
+          echo "::add-mask::$POSTGRES_PASSWORD"
+          echo "::add-mask::$TOI_AUTH_TOKEN"
+          echo "::add-mask::ci-service-token"
+          echo "::add-mask::$TOI_SERVICE_TOKENS"
+          if [[ "$GITHUB_REF_TYPE" == tag ]] && gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'This release already exists. Publish a new version instead of replacing it.' >&2
+            exit 1
+          fi
+      - name: Run backend and contract tests
+        env:
+          TOI_STREAM_ENABLED: 'false'
+          TOI_SERVICE_TOKENS: ''
+        run: |
+          python -m pip install -r backend/requirements.lock.txt -r docs/interfaces/requirements.txt
+          python -m pytest -q backend/tests
+          python -m ruff check backend scripts
+          python scripts/validate_service_interface.py --check-v1
+      - name: Build and test frontend
+        run: |
+          docker build --target build -f Dockerfile.frontend -t mkltoi-frontend-tests .
+          docker run --rm mkltoi-frontend-tests pnpm test
+      - name: Build the release images
+        run: |
+          docker build -f Dockerfile.backend --build-arg VERSION="$RELEASE_VERSION" \
+            --build-arg VCS_REF="$GITHUB_SHA" \
+            -t "$TOI_IMAGE_REGISTRY/mkltv-toi-backend:$TOI_RELEASE_TAG" .
+          docker build -f Dockerfile.frontend --build-arg VERSION="$RELEASE_VERSION" \
+            --build-arg VCS_REF="$GITHUB_SHA" \
+            -t "$TOI_IMAGE_REGISTRY/mkltv-toi-frontend:$TOI_RELEASE_TAG" .
+      - name: Start the release stack and exercise existing operators
+        id: smoke
+        run: |
+          set -euo pipefail
+          docker compose -f compose.release.yaml config --quiet
+          docker compose -f compose.release.yaml up -d --wait --wait-timeout 180
+          curl --fail --silent --show-error http://127.0.0.1:18080/health
+          result=$(docker compose -f compose.release.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" < scripts/smoke_portainer.py)
+          echo "$result"
+          echo "game_id=$(echo "$result" | jq -er '.game_id')" >> "$GITHUB_OUTPUT"
+          echo "fingerprint=$(echo "$result" | jq -er '.fingerprint')" >> "$GITHUB_OUTPUT"
+      - name: Exercise the bidirectional service interface through nginx
+        id: service_smoke
+        run: |
+          result=$(docker compose -f compose.release.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" < scripts/smoke_service_stream.py)
+          echo "$result"
+          echo "game_id=$(echo "$result" | jq -er '.game_id')" >> "$GITHUB_OUTPUT"
+          echo "cursor=$(echo "$result" | jq -er '.cursor')" >> "$GITHUB_OUTPUT"
+      - name: Recreate containers and verify persisted match
+        env:
+          SMOKE_GAME_ID: ${{ steps.smoke.outputs.game_id }}
+          SMOKE_FINGERPRINT: ${{ steps.smoke.outputs.fingerprint }}
+          SERVICE_GAME_ID: ${{ steps.service_smoke.outputs.game_id }}
+          SERVICE_CURSOR: ${{ steps.service_smoke.outputs.cursor }}
+        run: |
+          docker compose -f compose.release.yaml down
+          docker compose -f compose.release.yaml up -d --wait --wait-timeout 180
+          docker compose -f compose.release.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" --verify-game "$SMOKE_GAME_ID" \
+            --fingerprint "$SMOKE_FINGERPRINT" < scripts/smoke_portainer.py
+          docker compose -f compose.release.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" --verify-game "$SERVICE_GAME_ID" \
+            --cursor "$SERVICE_CURSOR" < scripts/smoke_service_stream.py
+      - name: Publish version and commit tags to GHCR
+        id: registry
+        if: github.ref_type == 'tag'
+        continue-on-error: true
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          for component in backend frontend; do
+            image="$TOI_IMAGE_REGISTRY/mkltv-toi-$component"
+            if docker manifest inspect "$image:$TOI_RELEASE_TAG" >/dev/null 2>&1; then
+              echo 'immutable_conflict=true' >> "$GITHUB_OUTPUT"
+              echo "Refusing to overwrite existing $image:$TOI_RELEASE_TAG" >&2
+              exit 1
+            fi
+          done
+          for component in backend frontend; do
+            image="$TOI_IMAGE_REGISTRY/mkltv-toi-$component"
+            docker tag "$image:$TOI_RELEASE_TAG" "$image:sha-$GITHUB_SHA"
+            docker push "$image:$TOI_RELEASE_TAG"
+            docker push "$image:sha-$GITHUB_SHA"
+          done
+      - name: Stop if the immutable version already exists
+        if: github.ref_type == 'tag' && steps.registry.outputs.immutable_conflict == 'true'
+        run: |
+          echo 'This version has already been published. Choose a new version before publishing different artifacts.' >&2
+          exit 1
+      - name: Check anonymous registry availability
+        id: anonymous
+        if: github.ref_type == 'tag'
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io || true
+          available=true
+          for component in backend frontend; do
+            if ! docker pull --quiet "$TOI_IMAGE_REGISTRY/mkltv-toi-$component:$TOI_RELEASE_TAG" >/dev/null 2>&1; then
+              available=false
+            fi
+          done
+          echo "available=$available" >> "$GITHUB_OUTPUT"
+          if [[ "$available" == false ]]; then
+            echo '::warning::Anonymous GHCR pulls are unavailable. Make both packages public or use the checksummed release image bundle.'
+          fi
+      - name: Prepare public release assets
+        if: github.ref_type == 'tag'
+        env:
+          REGISTRY_PUBLISHED: ${{ steps.registry.outcome == 'success' }}
+          ANONYMOUS_PULL: ${{ steps.anonymous.outputs.available }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          bundle="mkltoi-$TOI_RELEASE_TAG-linux-amd64.tar.gz"
+          docker image save \
+            "$TOI_IMAGE_REGISTRY/mkltv-toi-backend:$TOI_RELEASE_TAG" \
+            "$TOI_IMAGE_REGISTRY/mkltv-toi-frontend:$TOI_RELEASE_TAG" | gzip > "release-assets/$bundle"
+          cp compose.release.yaml release.env.example UPDATING.md scripts/load-release-images.sh release-assets/
+          backend_id=$(docker image inspect "$TOI_IMAGE_REGISTRY/mkltv-toi-backend:$TOI_RELEASE_TAG" --format '{{.Id}}')
+          frontend_id=$(docker image inspect "$TOI_IMAGE_REGISTRY/mkltv-toi-frontend:$TOI_RELEASE_TAG" --format '{{.Id}}')
+          jq -n --arg version "$RELEASE_VERSION" --arg tag "$TOI_RELEASE_TAG" \
+            --arg revision "$GITHUB_SHA" --arg backend_id "$backend_id" --arg frontend_id "$frontend_id" \
+            --argjson registry_published "$REGISTRY_PUBLISHED" --argjson anonymous_pull "$ANONYMOUS_PULL" \
+            '{version:$version,tag:$tag,revision:$revision,platform:"linux/amd64",registry_published:$registry_published,anonymous_pull_verified:$anonymous_pull,images:{backend:$backend_id,frontend:$frontend_id}}' \
+            > release-assets/release-manifest.json
+          (cd release-assets && sha256sum "$bundle" compose.release.yaml release.env.example UPDATING.md load-release-images.sh release-manifest.json > SHA256SUMS)
+          docker compose -f compose.release.yaml down
+          docker image rm "$TOI_IMAGE_REGISTRY/mkltv-toi-backend:$TOI_RELEASE_TAG" \
+            "$TOI_IMAGE_REGISTRY/mkltv-toi-frontend:$TOI_RELEASE_TAG"
+          docker image load --input "release-assets/$bundle"
+          for component in backend frontend; do
+            actual=$(docker image inspect "$TOI_IMAGE_REGISTRY/mkltv-toi-$component:$TOI_RELEASE_TAG" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')
+            test "$actual" = "$GITHUB_SHA"
+          done
+      - name: Publish GitHub release with public download fallback
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ANONYMOUS_PULL: ${{ steps.anonymous.outputs.available }}
+        run: |
+          set -euo pipefail
+          cat > release-notes.md <<EOF
+          Lightning TV TOI $TOI_RELEASE_TAG includes the bidirectional v2 service interface and versioned deployment images.
+
+          Linux amd64 images passed backend, frontend, contract and PostgreSQL/nginx integration checks before publication.
+          Anonymous GHCR pull verified at publication: **$ANONYMOUS_PULL**.
+          See UPDATING.md for the one-time Portainer migration and subsequent tag-only updates.
+          If GHCR packages require login, the image bundle is a public alternative: verify SHA256SUMS, then load it on the target Docker host.
+          Match data remains in the existing PostgreSQL volume; retain the stack name and database credentials.
+          EOF
+          gh release create "$TOI_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "Lightning TV TOI $TOI_RELEASE_TAG" --notes-file release-notes.md \
+            --draft release-assets/*
+          gh release edit "$TOI_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --draft=false
+          printf 'Published %s\n' "$TOI_RELEASE_TAG" >> "$GITHUB_STEP_SUMMARY"
+          cat release-assets/release-manifest.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Collect diagnostics after failure
+        if: failure()
+        run: |
+          docker compose -f compose.release.yaml ps --all
+          docker compose -f compose.release.yaml logs --no-color --tail=150
+      - name: Remove ephemeral CI containers and volume
+        if: always()
+        run: docker compose -f compose.release.yaml down --volumes --remove-orphans

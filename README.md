@@ -6,7 +6,7 @@ The demonstration uses **fictional** Milton Keynes Storm and Northbank Wolves ro
 
 ## Deploy with Linux Portainer
 
-Use the image-only [Portainer stack](compose.portainer.yaml) and follow [PORTAINER.md](PORTAINER.md) for building the two images in Portainer, required environment variables, iPad access, HTTPS, updates and database backups. This deployment publishes the frontend to the LAN and keeps PostgreSQL/backend private. The source-build Docker Compose setup below is for local development.
+Use the prebuilt-image [release stack](compose.release.yaml) and [UPDATING.md](UPDATING.md) for the one-time upgrade from your existing `toi-v1` stack and future release-tag updates. [PORTAINER.md](PORTAINER.md) also retains local-build instructions, required environment variables, iPad access, HTTPS and database backups. This deployment publishes the frontend to the LAN and keeps PostgreSQL/backend private. The source-build Docker Compose setup below is for local development.
 
 ## Start with Docker
 
@@ -154,7 +154,7 @@ See [.env.example](.env.example) for all deployment settings. Empty authenticati
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for timing, persistence and concurrency decisions; [API.md](API.md) for commands and live snapshots; and [INTEGRATION.md](INTEGRATION.md) for website mounting, roster imports, scoreboard observations and graphics consumers.
 
-For continuous external clock, player TOI, on-ice lineup and recorded-change integrations, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). It inventories the current HTTP-input/WebSocket-output API and supplies the proposed duplex v2 protocol, durable replay, clock ownership, service permissions, machine-readable contracts and latency acceptance plan. The v2 design is documented but is not implemented by the current images.
+For continuous external clock, player TOI, on-ice lineup and recorded-change integrations, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). It covers the legacy API and the implemented duplex v2 protocol, durable replay, clock ownership, service permissions, machine-readable contracts and latency acceptance plan. The release stack enables v2; configure scoped service tokens before connecting external services.
 
 Run a single backend worker until the process-local WebSocket notification bus is replaced with shared pub/sub. Formal penalty enforcement and strength-classified TOI, seasonal totals, direct vMix output and real OCR/authentication integrations remain future work. The prototype records physical locations and reports even-strength/power-play/penalty-kill statistics as unavailable rather than inferring rules from the penalty box.
 

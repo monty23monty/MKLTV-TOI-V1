@@ -4,6 +4,48 @@ import { ArrowRight, Check, ChevronDown, ChevronUp, Clock3, Download, FileJson, 
 import type { Action, Line, Location, MatchEvent, Player, Position, Snapshot } from './types'
 import { duration, eventDescription } from './App'
 import { SourceRefresh } from './HokejovyImport'
+import { api } from './useGame'
+
+export function ClockSourceControl({ state, action, locked }: { state: Snapshot; action: Action; locked: boolean }) {
+  const [sources, setSources] = useState<{ source: string; service_id: string }[]>([])
+  const [selected, setSelected] = useState('manual')
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const authority = state.clock_authority
+  useEffect(() => {
+    let disposed = false
+    setLoading(true)
+    void api<{ sources: { source: string; service_id: string }[] }>(`/api/v1/games/${state.game.id}/clock/authority`)
+      .then(result => { if (!disposed) { setSources(result.sources); setError('') } })
+      .catch(() => { if (!disposed) setError('Clock source controls require a match supervisor and enabled services.') })
+      .finally(() => { if (!disposed) setLoading(false) })
+    return () => { disposed = true }
+  }, [state.game.id])
+  useEffect(() => {
+    setSelected(authority?.mode === 'external' ? JSON.stringify([authority.service_id, authority.source]) : 'manual')
+  }, [authority?.generation, authority?.mode, authority?.service_id, authority?.source])
+  const apply = async () => {
+    const source = sources.find(item => JSON.stringify([item.service_id, item.source]) === selected)
+    if (selected !== 'manual' && !source) return
+    setSaving(true)
+    try {
+      const ok = await action('clock.authority', { mode: selected === 'manual' ? 'manual' : 'external', source: source?.source ?? null, service_id: source?.service_id ?? null })
+      if (!ok) setError('Clock source was not changed. Check the match connection and retry.')
+      else setError('')
+    } finally { setSaving(false) }
+  }
+  return <section className="clock-source-control" aria-label="Clock source">
+    <div><strong>Clock source</strong><span role="status">{authority?.mode === 'external' ? `${authority.source} · ${authority.feed_status === 'stale' ? 'Waiting for clock feed' : 'Connected'}` : 'Manual control'}</span></div>
+    <label>Use clock source<select aria-label="Use clock source" value={selected} disabled={locked || loading || saving || !!error && sources.length === 0} onChange={event => setSelected(event.target.value)}>
+      <option value="manual">Manual operator clock</option>
+      {sources.map(item => <option key={JSON.stringify([item.service_id, item.source])} value={JSON.stringify([item.service_id, item.source])}>{item.source} ({item.service_id})</option>)}
+    </select></label>
+    <button type="button" className="subtle-button" disabled={locked || loading || saving || !!error && sources.length === 0} onClick={() => void apply()}>{saving ? 'Changing source…' : 'Use selected clock'}</button>
+    <p className="muted">Changing source pauses play. Manual clock controls take ownership until you select the external feed again.</p>
+    {error && <p role="alert" className="form-error">{error}</p>}
+  </section>
+}
 
 export function ClockEditor({ state, action, locked, onClose, operatorMode = false }: { state: Snapshot; action: Action; locked: boolean; onClose: () => void; operatorMode?: boolean }) {
   const [period, setPeriod] = useState(state.clock.period)
@@ -33,7 +75,7 @@ export function ClockEditor({ state, action, locked, onClose, operatorMode = fal
     if (ms > lengths[period - 1] * 60000) { setError('Remaining time cannot exceed this period’s duration.'); return }
     if (await action('clock', { operation: 'set', period, remaining_ms: ms, period_lengths_ms: lengths.map(length => Math.round(length * 60000)) })) onClose()
   }
-  return <div className="modal-backdrop"><form className="modal clock-modal" role="dialog" aria-modal="true" aria-label="Game clock controls" onSubmit={submit}><div className="modal-header"><div><span className="eyebrow">AUTHORITATIVE GAME TIME</span><h2>Clock controls</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Close clock controls"><X /></button></div>{!operatorMode && <p className="muted">Clock corrections change the scoreboard display. Recorded playing time and shifts remain continuous.</p>}<div className="form-row"><label>Current period<select value={period} onChange={event => { const next = Number(event.target.value); setPeriod(next); setRemaining(duration(lengths[next - 1] * 60000)) }}>{lengths.map((_, index) => <option key={index} value={index + 1}>{index < 3 ? `Period ${index + 1}` : `Overtime ${index - 2}`}</option>)}</select></label><label>Remaining time<input autoFocus value={remaining} onChange={event => setRemaining(event.target.value)} placeholder="20:00" inputMode="numeric" /></label></div>{operatorMode && canPrepareOvertime && <div className="form-row"><label>Overtime minutes<input type="number" min="1" max="120" step="1" value={overtimeMinutes} disabled={locked} onChange={event => setOvertimeMinutes(Number(event.target.value))} /></label><button type="button" className="subtle-button" disabled={locked} onClick={prepareOvertime}><Plus size={16} />Prepare overtime</button></div>}{!operatorMode && <div className="period-config"><span className="eyebrow">PERIOD LENGTHS · MINUTES</span><div>{lengths.map((length, index) => <label key={index}>P{index + 1}<input type="number" min="1" max="120" step="1" value={length} onChange={event => setLengths(previous => previous.map((item, i) => i === index ? Number(event.target.value) : item))} /></label>)}</div><button type="button" className="text-button" disabled={lengths.length >= 10} onClick={() => setLengths(previous => [...previous, 5])}><Plus size={14} />Add overtime period</button></div>}{error && <div role="alert" className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="subtle-button" disabled={locked || state.clock.period >= state.game.period_lengths_ms.length} onClick={async () => { if (await action('clock', { operation: 'advance' })) onClose() }}>Advance period<ArrowRight size={15} /></button><button className="primary-button" disabled={locked}><Check size={16} />Apply clock</button></div></form></div>
+  return <div className="modal-backdrop"><form className="modal clock-modal" role="dialog" aria-modal="true" aria-label="Game clock controls" onSubmit={submit}><div className="modal-header"><div><span className="eyebrow">AUTHORITATIVE GAME TIME</span><h2>Clock controls</h2></div><button type="button" className="icon-button" onClick={onClose} aria-label="Close clock controls"><X /></button></div>{!operatorMode && <p className="muted">Clock corrections change the scoreboard display. Recorded playing time and shifts remain continuous.</p>}{state.clock_authority && <ClockSourceControl state={state} action={action} locked={locked} />}<div className="form-row"><label>Current period<select value={period} onChange={event => { const next = Number(event.target.value); setPeriod(next); setRemaining(duration(lengths[next - 1] * 60000)) }}>{lengths.map((_, index) => <option key={index} value={index + 1}>{index < 3 ? `Period ${index + 1}` : `Overtime ${index - 2}`}</option>)}</select></label><label>Remaining time<input autoFocus value={remaining} onChange={event => setRemaining(event.target.value)} placeholder="20:00" inputMode="numeric" /></label></div>{operatorMode && canPrepareOvertime && <div className="form-row"><label>Overtime minutes<input type="number" min="1" max="120" step="1" value={overtimeMinutes} disabled={locked} onChange={event => setOvertimeMinutes(Number(event.target.value))} /></label><button type="button" className="subtle-button" disabled={locked} onClick={prepareOvertime}><Plus size={16} />Prepare overtime</button></div>}{!operatorMode && <div className="period-config"><span className="eyebrow">PERIOD LENGTHS · MINUTES</span><div>{lengths.map((length, index) => <label key={index}>P{index + 1}<input type="number" min="1" max="120" step="1" value={length} onChange={event => setLengths(previous => previous.map((item, i) => i === index ? Number(event.target.value) : item))} /></label>)}</div><button type="button" className="text-button" disabled={lengths.length >= 10} onClick={() => setLengths(previous => [...previous, 5])}><Plus size={14} />Add overtime period</button></div>}{error && <div role="alert" className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="subtle-button" disabled={locked || state.clock.period >= state.game.period_lengths_ms.length} onClick={async () => { if (await action('clock', { operation: 'advance' })) onClose() }}>Advance period<ArrowRight size={15} /></button><button className="primary-button" disabled={locked}><Check size={16} />Apply clock</button></div></form></div>
 }
 
 type RosterDraft = Pick<Player, 'id' | 'team_id' | 'name' | 'number' | 'position' | 'eligible' | 'location'>

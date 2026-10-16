@@ -1,6 +1,6 @@
 # Service stream contract tools
 
-**Design only.** These files specify proposed protocol v2; they do not install a server endpoint. Start with [SERVICE_INTERFACE.md](../../SERVICE_INTERFACE.md). Current callable endpoints remain in [API.md](../../API.md).
+**Protocol v2, implemented in release 2.0.0.** Start with [SERVICE_INTERFACE.md](../../SERVICE_INTERFACE.md) and enable/configure service streaming as documented there. Legacy endpoints remain in [API.md](../../API.md).
 
 | File | Purpose |
 | --- | --- |
@@ -48,4 +48,4 @@ Use `--direction server` for server frames; the default `either` accepts either 
 
 ## What validation proves
 
-The check validates the schema itself, all accepted/rejected examples, direction separation, every defined message type, local-only references and optional payload consistency with the current backend. JSON Schema does not prove authorization, monotonic sequences, cursor binding, durable transactions, timing calculations, throughput or replay correctness. Those semantic and runtime acceptance tests are specified in the main design and still require implementation.
+The check validates the schema itself, all accepted/rejected examples, direction separation, every defined message type, local-only references and optional payload consistency with the current backend. JSON Schema does not prove authorization, monotonic sequences, cursor binding, durable transactions, timing calculations, throughput or replay correctness. Those semantic and runtime acceptance tests are specified in the main design and are covered by runtime tests separately; full-duration capacity testing still needs operational measurement.

@@ -1,8 +1,16 @@
 FROM python:3.12-slim
 
+ARG VERSION=2.0.0
+ARG VCS_REF=development
+LABEL org.opencontainers.image.title="Lightning TV TOI backend" \
+    org.opencontainers.image.source="https://github.com/monty23monty/MKLTV-TOI-V1" \
+    org.opencontainers.image.version=$VERSION \
+    org.opencontainers.image.revision=$VCS_REF
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PYTHONPATH=/app/backend
+    PYTHONPATH=/app/backend \
+    TOI_APP_VERSION=$VERSION \
+    TOI_APP_REVISION=$VCS_REF
 WORKDIR /app
 COPY backend/requirements.lock.txt backend/requirements.lock.txt
 RUN pip install --no-cache-dir -r backend/requirements.lock.txt

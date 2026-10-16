@@ -2,6 +2,10 @@
 
 This stack targets a **Linux Docker Standalone environment** in Portainer CE or BE. It runs nginx/React, one FastAPI worker and PostgreSQL 17. Only the dashboard port is published. Match data, shifts and history live in a persistent PostgreSQL named volume.
 
+**For v2 and subsequent releases, use [compose.release.yaml](compose.release.yaml) and [UPDATING.md](UPDATING.md).** Prebuilt versioned images replace the Portainer build/tag workflow below. Existing users should replace the YAML in their current `toi-v1` stack, preserving its name, volume and database credentials. Future updates normally change one variable, `TOI_RELEASE_TAG`; release notes and backups remain part of the process. Published release image bundles also provide a registry-independent loading path.
+
+The remaining local-build instructions are an alternative for development or hosts using their own builds.
+
 Use [compose.portainer.yaml](compose.portainer.yaml) in **Stacks → Add stack → Web editor** after building the two application images below. The application images are local images, not images published to Docker Hub. Portainer documents limitations around building repository source during stack deployment, so image building is a separate, explicit step ([Portainer build FAQ](https://docs.portainer.io/faqs/troubleshooting/can-i-build-an-image-while-deploying-a-stack-application-from-git)).
 
 ## 1. Build the images in Portainer
@@ -112,13 +116,15 @@ Use one management method for a running stack. A stack created through the Docke
 
 ## HTTPS / an existing reverse proxy
 
-For external clock services, live player TOI, on-ice lineups and a recorded-change feed, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). Current integrations use HTTP inputs plus the existing WebSocket output through this frontend port; the documented duplex v2/replay protocol is proposed backend work and is not enabled by deploying this stack.
+For external clock services, live player TOI, on-ice lineups and a recorded-change feed, see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md). The v2 release provides its duplex WebSocket and replay API through this same frontend port. Configure separate scoped `TOI_SERVICE_TOKENS` for integrations; the v1 operator token does not grant v2 service access. The release Compose file passes this new setting to the backend.
 
 Point your existing reverse proxy at the frontend port and enable WebSocket upgrade forwarding. Set `TOI_CORS_ORIGINS` to the exact external HTTPS origin. The explicit origin matters when HTTPS terminates before the container's HTTP listener. Keep database/backend ports private. A public deployment should use HTTPS so the operator token is transported over TLS.
 
 The frontend uses relative `/api` URLs; do not enter a backend container name, `localhost:8000`, or a separate API URL into Safari. Docker service DNS names are internal to the containers. nginx re-resolves the backend through Docker DNS after container recreation.
 
 ## Updates and rollback
+
+The recommended prebuilt-release workflow, including the one-time transition from local images, is documented in [UPDATING.md](UPDATING.md). The following steps apply only if you deliberately keep `compose.portainer.yaml` and build locally.
 
 Pause tracking and take a database backup before an application upgrade.
 
@@ -149,7 +155,13 @@ To restore, stop the backend and frontend, keep PostgreSQL running, and restore 
 docker exec -i YOUR-DB-CONTAINER pg_restore -U toi -d lightning_toi --clean --if-exists --no-owner < lightning-toi-backup.dump
 ```
 
-Restoring replaces the target database's application data. Start the backend and frontend again and verify the restored match before operating.
+Restoring replaces the target database's application data. For v2, keep every API worker stopped and rotate the restored journal generations before reopening service access. Using the release Compose file and the restored database's existing credentials/network:
+
+```bash
+docker compose --env-file .env.release -p toi-v1 -f compose.release.yaml run --rm --no-deps backend python -m toi.admin rotate-journals --all --confirm-offline
+```
+
+This fences pre-restore clock owners, pauses restored clocks and makes pre-restore service cursors explicitly invalid. It preserves recorded TOI/history. If Portainer owns the stack, run an equivalent one-off container using the same release image, database environment and `toi-v1_database` network; do not start a second API worker. Start the backend/frontend again, verify the restored match and explicitly reconnect/reassign the external clock if needed. A rollback to pre-v2 images has no v2 service endpoint; retain the backup and journal history before downgrading.
 
 ## Troubleshooting
 
@@ -165,6 +177,6 @@ Restoring replaces the target database's application data. Start the backend and
 | Rosters appear empty after redeployment | Check that the same stack name and PostgreSQL volume are attached; do not overwrite the old volume. |
 | Port 8080 is already used | Choose another `TOI_FRONTEND_PORT` and update the dashboard URL/origin. |
 
-The repository's **Linux container smoke test** builds both images, deploys this image-only stack with PostgreSQL, exercises nginx/API/WebSocket/authentication and tracking, and checks persistence across container recreation. It publishes no container images. The workflow's result is available under the repository's **Actions** tab; deployment on your own Portainer host still needs the image-build steps above.
+The repository's **Linux container smoke test** builds both images, deploys the local-image stack with PostgreSQL, exercises nginx/API/WebSocket/authentication and tracking, and checks persistence across container recreation. The separate **Test and publish versioned release** workflow validates v1/v2 and publishes release images/bundles. Results are available under the repository's **Actions** tab; locally built deployments still need the image-build steps above.
 
 The initial Linux run passed: [container stack smoke test](https://github.com/monty23monty/MKLTV-TOI-V1/actions/runs/38946708889).

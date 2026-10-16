@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError, OperationalError
 from . import domain
 from .models import AuditRow, GameRow, ReceiptRow
 from .store import StoreError, constrain_external_clock, now_ms, public_snapshot
+from .journal import append_change, stream_enabled
 
 PROVIDER = "hokejovy-zapis"
 
@@ -210,11 +211,16 @@ class ImportService:
                 if existing:
                     return public_snapshot(existing.state)
                 state = make_state(dto, {**body, "actor": principal.actor}, timestamp)
-                session.add(GameRow(id=game_id, name=state["game"]["name"], status=state["game"]["status"], external_id=state["game"]["external_id"], version=state["version"], state=state))
+                row = GameRow(id=game_id, name=state["game"]["name"], status=state["game"]["status"], external_id=state["game"]["external_id"], version=state["version"], state=state)
+                session.add(row)
                 session.flush()
                 self.store._project(session, state)
+                if stream_enabled():
+                    self.store._ensure_journal(session, row, timestamp, "roster.imported", actor=principal.actor,
+                                               command={"type": "source.import", "external_game_id": dto["external_game_id"],
+                                                        "preview_fingerprint": fingerprint(dto), "adjustments": body})
                 session.add(AuditRow(game_id=game_id, version=state["version"], actor=principal.actor, request_id=f"import-{game_id}", created_at_ms=timestamp, command={"type": "source.import", "external_game_id": dto["external_game_id"], "preview_fingerprint": fingerprint(dto), "adjustments": body}, previous_values={}, new_values={"source": PROVIDER, "roster_count": len(state["players"]), "coverage": state["game"]["coverage"]}))
-                return public_snapshot(state, timestamp)
+                return public_snapshot(row.state, timestamp)
         except domain.DomainError as error:
             raise StoreError(error.status_code, str(error)) from error
         except (IntegrityError, OperationalError) as error:
@@ -242,6 +248,9 @@ class ImportService:
                     return {"version": row.version, "preview_fingerprint": fingerprint(dto), "changes": source_changes(row.state, dto), "warnings": dto.get("warnings", [])}
                 if body.get("preview_fingerprint") != fingerprint(dto):
                     raise StoreError(409, "Source changed after preview; fetch and review the differences again")
+                if stream_enabled():
+                    self.store._ensure_journal(session, row, timestamp)
+                stored_before = deepcopy(row.state)
                 previous_version = row.version
                 previous_fingerprint = fingerprint(row.state["integration"]["latest_snapshot"])
                 state = reconcile(row.state, dto, body.get("restore_lines", False), timestamp)
@@ -252,7 +261,8 @@ class ImportService:
                     raise StoreError(409, "Concurrent match update; review the source again")
                 self.store._project(session, state)
                 session.add(AuditRow(game_id=game_id, version=state["version"], actor=principal.actor, request_id=body["request_id"], created_at_ms=timestamp, command={"type": "source.refresh", **body}, previous_values={"source_fingerprint": previous_fingerprint}, new_values={"source_fingerprint": fingerprint(dto), "changes": state["integration"]["changes"]}))
-                session.add(ReceiptRow(game_id=game_id, request_id=body["request_id"], actor=principal.actor, fingerprint=action_hash, response=result))
+                cursor = append_change(session, state, stored_before, {"type": "source.refresh", **body}, principal.actor, body["request_id"], timestamp)
+                session.add(ReceiptRow(game_id=game_id, request_id=body["request_id"], actor=principal.actor, fingerprint=action_hash, response=result, journal_cursor=cursor))
                 return result
         except domain.DomainError as error:
             raise StoreError(error.status_code, str(error)) from error

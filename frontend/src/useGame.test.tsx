@@ -41,6 +41,45 @@ async function connectedGame() {
 }
 
 describe('tablet action identifiers and pending recovery', () => {
+  it('bounds external clock interpolation at the feed deadline', async () => {
+    const hook = await connectedGame()
+    act(() => FakeSocket.instances[0].onmessage?.({ data: JSON.stringify({ type: 'state.resync', state: {
+      ...snapshot, version: 2, clock: { ...snapshot.clock, running: true },
+      clock_authority: { mode: 'external', generation: 1, source: 'scoreboard', service_id: 'clock', last_source_sequence: 1, feed_status: 'fresh', observed_at_ms: 1000, stale_at_ms: 1100 },
+    } }) }))
+    await waitFor(() => expect(hook.result.current.elapsed).toBe(100))
+  })
+
+  it('freezes displayed elapsed time when the live connection is lost', async () => {
+    const hook = await connectedGame()
+    act(() => FakeSocket.instances[0].onmessage?.({ data: JSON.stringify({ type: 'state.resync', state: {
+      ...snapshot, version: 2, clock: { ...snapshot.clock, running: true },
+    } }) }))
+    await waitFor(() => expect(hook.result.current.elapsed).toBeGreaterThan(0))
+    act(() => FakeSocket.instances[0].onclose?.())
+    const frozen = hook.result.current.elapsed
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 250)) })
+    expect(hook.result.current.elapsed).toBe(frozen)
+  })
+
+  it('uses the authority endpoint and preserves the exact handover body after a lost response', async () => {
+    const hook = await connectedGame()
+    const bodies: string[] = []
+    vi.mocked(fetch).mockImplementation(async (path, options) => {
+      if (String(path).endsWith('/clock/authority')) {
+        bodies.push(String(options?.body))
+        if (bodies.length === 1) throw new TypeError('Response lost')
+      }
+      return jsonResponse(snapshot)
+    })
+    await act(async () => { await hook.result.current.action('clock.authority', { mode: 'manual', source: null, service_id: null }) })
+    expect(bodies).toHaveLength(2)
+    expect(bodies[0]).toBe(bodies[1])
+    expect(JSON.parse(bodies[0])).toMatchObject({ expected_version: 1, mode: 'manual', source: null, service_id: null })
+    expect(JSON.parse(bodies[0])).not.toHaveProperty('type')
+    expect(JSON.parse(bodies[0])).not.toHaveProperty('payload')
+  })
+
   it('sends an action over HTTP without randomUUID and keeps the same ID on retry', async () => {
     const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto)
     vi.stubGlobal('crypto', { getRandomValues })

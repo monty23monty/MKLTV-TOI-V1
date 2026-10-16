@@ -1,4 +1,4 @@
-"""Validate the DESIGN-ONLY service-stream v2 schema and examples without a server.
+"""Validate the service-stream v2 schema and examples without a server.
 
 Install docs/interfaces/requirements.txt in a separate environment first. This
 script never installs dependencies, contacts services, or retrieves remote refs.
@@ -191,7 +191,7 @@ def expand_example(example, bases):
 
 
 def validate_corpus(schema, corpus, validators):
-    require(corpus.get("status") == "DESIGN_ONLY", "Examples must explicitly identify their DESIGN_ONLY status")
+    require(corpus.get("status") == "IMPLEMENTED_V2", "Examples must identify their IMPLEMENTED_V2 status")
     require(corpus.get("protocol") == 2, "Examples must identify protocol 2")
     valid = corpus["valid"]
     invalid = corpus["invalid"]
@@ -242,7 +242,7 @@ def main():
             require(validators[args.direction].is_valid(read_json(args.message)),
                     f"The supplied message is invalid in {args.direction} direction")
             print(f"Message accepted in {args.direction} direction: {args.message}")
-        print(f"DESIGN_ONLY protocol 2: schema valid; {accepted} positive and {rejected} negative examples passed")
+        print(f"Protocol 2: schema valid; {accepted} positive and {rejected} negative examples passed")
     except (ContractFailure, OSError, ValueError, KeyError, TypeError) as error:
         print(f"Contract validation failed: {error}", file=sys.stderr)
         return 1

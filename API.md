@@ -1,6 +1,6 @@
 # API v1
 
-This file describes implemented endpoints. The existing WebSocket sends updates; commands enter over HTTP. [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md) documents this current integration pattern and specifies a separate, proposed duplex service protocol for clock input, per-player TOI, on-ice lineups and replayable recorded changes. Its v2 endpoints are not implemented by this API.
+This file describes the implemented v1 endpoints. Its WebSocket sends updates and commands enter over HTTP. The additive v2 API supports duplex commands, authoritative clock input, per-player TOI, on-ice lineups and replayable recorded changes; see [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md) and [UPDATING.md](UPDATING.md).
 
 The backend exposes [OpenAPI JSON](http://localhost:8000/openapi.json) and [interactive API documentation](http://localhost:8000/docs). All JSON timing fields ending `_ms` are integer milliseconds. Player IDs are opaque strings; jersey numbers are roster attributes.
 

@@ -13,6 +13,8 @@ on:
       - 'frontend/**'
       - 'scripts/start-backend.sh'
       - 'scripts/smoke_portainer.py'
+      - 'scripts/smoke_service_stream.py'
+      - 'VERSION'
   pull_request:
     paths:
       - '.github/workflows/container-smoke.yml'
@@ -24,6 +26,8 @@ on:
       - 'frontend/**'
       - 'scripts/start-backend.sh'
       - 'scripts/smoke_portainer.py'
+      - 'scripts/smoke_service_stream.py'
+      - 'VERSION'
   workflow_dispatch:
 
 permissions:
@@ -43,6 +47,8 @@ jobs:
       POSTGRES_PASSWORD: 'ci-db@pass:/?#%$'
       TOI_AUTH_TOKEN: ci-operator-token
       TOI_CORS_ORIGINS: http://127.0.0.1:18080
+      TOI_STREAM_ENABLED: 'true'
+      TOI_SERVICE_TOKENS: '{"ci-service-token":{"service_id":"ci-service","game_ids":["*"],"permissions":["stream:read","journal:read","players:write","clock:write","clock:control","clock:authority","history:write","setup:write"],"team_ids":null,"clock_sources":["ci-scoreboard"],"expires_at_ms":null}}'
     steps:
       - uses: actions/checkout@v7
         with:
@@ -51,6 +57,8 @@ jobs:
         run: |
           echo "::add-mask::$POSTGRES_PASSWORD"
           echo "::add-mask::$TOI_AUTH_TOKEN"
+          echo "::add-mask::ci-service-token"
+          echo "::add-mask::$TOI_SERVICE_TOKENS"
       - name: Build Linux images
         run: |
           docker build -f Dockerfile.backend -t mkltoi-backend:ci .
@@ -67,6 +75,14 @@ jobs:
           echo "$result"
           echo "game_id=$(echo "$result" | jq -er '.game_id')" >> "$GITHUB_OUTPUT"
           echo "fingerprint=$(echo "$result" | jq -er '.fingerprint')" >> "$GITHUB_OUTPUT"
+      - name: Exercise v2 clock ownership, journal and duplex WebSocket
+        id: service_smoke
+        run: |
+          result=$(docker compose -f compose.portainer.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" < scripts/smoke_service_stream.py)
+          echo "$result"
+          echo "game_id=$(echo "$result" | jq -er '.game_id')" >> "$GITHUB_OUTPUT"
+          echo "cursor=$(echo "$result" | jq -er '.cursor')" >> "$GITHUB_OUTPUT"
       - name: Recreate containers while preserving PostgreSQL volume
         run: |
           docker compose -f compose.portainer.yaml down
@@ -75,10 +91,15 @@ jobs:
         env:
           SMOKE_GAME_ID: ${{ steps.smoke.outputs.game_id }}
           SMOKE_FINGERPRINT: ${{ steps.smoke.outputs.fingerprint }}
+          SERVICE_GAME_ID: ${{ steps.service_smoke.outputs.game_id }}
+          SERVICE_CURSOR: ${{ steps.service_smoke.outputs.cursor }}
         run: |
           docker compose -f compose.portainer.yaml exec -T backend python - \
             --origin "$TOI_CORS_ORIGINS" --verify-game "$SMOKE_GAME_ID" \
             --fingerprint "$SMOKE_FINGERPRINT" < scripts/smoke_portainer.py
+          docker compose -f compose.portainer.yaml exec -T backend python - \
+            --origin "$TOI_CORS_ORIGINS" --verify-game "$SERVICE_GAME_ID" \
+            --cursor "$SERVICE_CURSOR" < scripts/smoke_service_stream.py
       - name: Collect diagnostics after failure
         if: failure()
         run: |

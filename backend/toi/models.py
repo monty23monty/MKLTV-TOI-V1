@@ -113,3 +113,22 @@ class ReceiptRow(Base):
     actor: Mapped[str] = mapped_column(String(100))
     fingerprint: Mapped[str] = mapped_column(Text)
     response: Mapped[dict] = mapped_column(JSON)
+    journal_cursor: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    service_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
+
+class JournalRow(Base):
+    """Durable per-match sequence allocation, independent of process lifetime."""
+    __tablename__ = "integration_journals"
+    game_id: Mapped[str] = mapped_column(ForeignKey("games.id"), primary_key=True)
+    generation: Mapped[str] = mapped_column(String(36))
+    high_water_seq: Mapped[int] = mapped_column(BigInteger)
+    oldest_seq: Mapped[int] = mapped_column(BigInteger)
+
+
+class ChangeRow(Base):
+    __tablename__ = "integration_changes"
+    game_id: Mapped[str] = mapped_column(ForeignKey("games.id"), primary_key=True)
+    journal_seq: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    recorded_at_ms: Mapped[int] = mapped_column(BigInteger, index=True)
+    record: Mapped[dict] = mapped_column(JSON)

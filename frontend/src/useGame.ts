@@ -29,6 +29,7 @@ export function useGame() {
   const [now, setNow] = useState(performance.now())
   const stateRef = useRef<Snapshot | null>(null)
   const receivedAt = useRef(performance.now())
+  const disconnectedAt = useRef(performance.now())
   const pendingRef = useRef(false)
   const gameIdRef = useRef(gameId)
 
@@ -103,6 +104,7 @@ export function useGame() {
       socket.onerror = () => socket?.close()
       socket.onclose = () => {
         if (disposed) return
+        disconnectedAt.current = performance.now()
         setConnection('offline')
         timer = window.setTimeout(connect, Math.min(1000 * 2 ** attempt++, 10000))
       }
@@ -119,13 +121,14 @@ export function useGame() {
     setError('')
     const id = gameIdRef.current
     try {
-      const body = JSON.stringify({ request_id: createUuid(), expected_version: stateRef.current.version, type, payload })
+      const request = { request_id: createUuid(), expected_version: stateRef.current.version }
+      const body = JSON.stringify(type === 'clock.authority' ? { ...request, ...payload } : { ...request, type, payload })
       let snapshot: Snapshot
-      try { snapshot = await api<Snapshot>(`/api/v1/games/${id}/actions`, { method: 'POST', body }) }
+      try { snapshot = await api<Snapshot>(`/api/v1/games/${id}/${type === 'clock.authority' ? 'clock/authority' : 'actions'}`, { method: 'POST', body }) }
       catch (e) {
         if ((e as { status?: number }).status) throw e
         // Retrying the identical request ID makes a lost response safe.
-        snapshot = await api<Snapshot>(`/api/v1/games/${id}/actions`, { method: 'POST', body })
+        snapshot = await api<Snapshot>(`/api/v1/games/${id}/${type === 'clock.authority' ? 'clock/authority' : 'actions'}`, { method: 'POST', body })
       }
       adopt(snapshot)
       return true
@@ -159,6 +162,9 @@ export function useGame() {
     return snapshot
   }
 
-  const elapsed = state?.clock.running ? Math.max(0, Math.min(now - receivedAt.current, state.clock.remaining_ms)) : 0
+  const displayNow = connection === 'live' ? now : disconnectedAt.current
+  const staleAt = state?.clock_authority?.mode === 'external' ? state.clock_authority.stale_at_ms : null
+  const untilStale = staleAt == null ? Infinity : Math.max(0, staleAt - (state?.server_time_ms ?? staleAt))
+  const elapsed = state?.clock.running ? Math.max(0, Math.min(displayNow - receivedAt.current, state.clock.remaining_ms, untilStale)) : 0
   return { state, games, gameId, connection, pending, error, setError, action, createGame, selectGame, elapsed, refreshGames, acceptImported, resync, applySnapshot: adopt }
 }

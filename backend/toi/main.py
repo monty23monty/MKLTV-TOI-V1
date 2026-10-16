@@ -4,20 +4,44 @@ import asyncio
 from collections import defaultdict
 from contextlib import asynccontextmanager
 import os
+from types import SimpleNamespace
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from starlette.concurrency import run_in_threadpool
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing import Literal
 
 from .adapters import Principal, resolve_principal
 from .database import database_url
+from .coordinator import MutationCoordinator
 from .import_service import ImportService, game_id_for, preview_response, require_supervisor
 from .integrations.hokejovy_zapis import HokejovyZapisProvider, ProviderError
 from .recommendations import recommend
 from .schemas import Action, ExternalClock, ImportGame, NewGame, RefreshRoster, StateSnapshot
 from .store import Store, StoreError, now_ms, public_snapshot
+from .service_stream import install_service_api
+from .version import APP_VERSION, build_metadata
+
+
+class ClockAuthorityRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: str = Field(min_length=8, max_length=100)
+    expected_version: int = Field(ge=0)
+    mode: Literal["manual", "external"]
+    source: str | None = Field(default=None, min_length=1, max_length=100)
+    service_id: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def ownership(self):
+        if self.mode == "external" and (not self.source or not self.service_id):
+            raise ValueError("External ownership requires a configured source and service")
+        if self.mode == "manual" and (self.source is not None or self.service_id is not None):
+            raise ValueError("Manual ownership must not name an external source or service")
+        return self
 
 
 class LiveHub:
@@ -69,23 +93,31 @@ def authenticate(authorization: str | None = Header(default=None)) -> Principal:
 def create_app(url: str | None = None) -> FastAPI:
     store = Store(url or database_url())
     hub = LiveHub()
+    coordinator = MutationCoordinator(store, hub)
 
     @asynccontextmanager
     async def lifespan(_app):
         store.migrate()
         store.create("demo")
-        yield
-        store.engine.dispose()
+        await app.state.service_stream.start()
+        try:
+            yield
+        finally:
+            await app.state.service_stream.stop()
+            store.engine.dispose()
 
-    app = FastAPI(title="Lightning TV • Live TOI", version="1.0.0", lifespan=lifespan,
+    app = FastAPI(title="Lightning TV • Live TOI", version=APP_VERSION, lifespan=lifespan,
                   description="Authoritative hockey player locations, game-time shifts and adaptive substitutions. See API.md for ordered WebSocket envelopes and integration semantics.")
     app.state.store = store
     app.state.hub = hub
+    app.state.coordinator = coordinator
     app.state.hokejovy_provider = HokejovyZapisProvider()
     imports = ImportService(store)
     origins = [s.strip() for s in os.getenv("TOI_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080").split(",") if s.strip()]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=False,
                        allow_methods=["GET", "POST"], allow_headers=["Authorization", "Content-Type"])
+    app.state.service_stream = install_service_api(app, store, coordinator, origins)
+    coordinator.notify = app.state.service_stream.notify
 
     @app.exception_handler(StoreError)
     async def store_error(_request, error: StoreError):
@@ -99,17 +131,29 @@ def create_app(url: str | None = None) -> FastAPI:
     def health():
         with store.engine.connect() as connection:
             connection.execute(text("SELECT 1"))
-        return {"status": "ok", "service": "lightning-toi", "api_version": "v1"}
+        return {"status": "ok", "service": "lightning-toi", "api_version": "v1",
+                "api_versions": ["v1", "v2"] if app.state.service_stream.enabled else ["v1"],
+                "stream_enabled": app.state.service_stream.enabled, **build_metadata()}
+
+    @app.get("/ready", tags=["Operations"])
+    def ready():
+        with store.engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+        return {"status": "ready", "database": "ok",
+                "stream_enabled": app.state.service_stream.enabled,
+                "services": app.state.service_stream.readiness(), **build_metadata()}
 
     @app.get("/api/v1/games", tags=["Games"])
     def games(_principal: Principal = Depends(authenticate)):
         return store.list_games()
 
     @app.post("/api/v1/games", response_model=StateSnapshot, status_code=201, tags=["Games"])
-    def new_game(details: NewGame, principal: Principal = Depends(authenticate)):
+    async def new_game(details: NewGame, principal: Principal = Depends(authenticate)):
         if principal.team_ids is not None or not principal.can_control_clock:
             raise HTTPException(403, "Creating a game requires a match supervisor")
-        return store.create(**details.model_dump())
+        game_id = str(uuid4())
+        async with coordinator.lock(game_id):
+            return await run_in_threadpool(store.create, game_id, actor=principal.actor, **details.model_dump())
 
     @app.get("/api/v1/integrations/hokejovy-zapis/games/{external_game_id}/preview", tags=["Hokejový Zápis"])
     def source_preview(external_game_id: str, force: bool = False, principal: Principal = Depends(authenticate)):
@@ -129,8 +173,9 @@ def create_app(url: str | None = None) -> FastAPI:
         else:
             return public_snapshot(existing)
         dto = await run_in_threadpool(app.state.hokejovy_provider.preview, body.external_game_id)
-        result = imports.import_game(dto, body.model_dump(exclude_none=True), principal)
-        hub.publish(game_id, {"type": "state.resync", "game_id": game_id, "version": result["version"], "state": result})
+        async with coordinator.lock(game_id):
+            result = await run_in_threadpool(imports.import_game, dto, body.model_dump(exclude_none=True), principal)
+            await coordinator.changed(game_id, snapshot=result)
         return result
 
     @app.get("/api/v1/games/{game_id}/lines", tags=["Games"])
@@ -150,9 +195,10 @@ def create_app(url: str | None = None) -> FastAPI:
         if not integration or integration.get("provider") != "hokejovy-zapis":
             raise StoreError(422, "This match has no Hokejový Zápis source")
         dto = await run_in_threadpool(app.state.hokejovy_provider.preview, integration["external_game_id"], force=not body.confirm)
-        result = imports.refresh(game_id, dto, refresh_body, principal)
-        if body.confirm:
-            hub.publish(game_id, {"type": "state.resync", "game_id": game_id, "version": result["version"], "state": result})
+        async with coordinator.lock(game_id):
+            result = await run_in_threadpool(imports.refresh, game_id, dto, refresh_body, principal)
+            if body.confirm:
+                await coordinator.changed(game_id, snapshot=result)
         return result
 
     @app.get("/api/v1/games/{game_id}/state", response_model=StateSnapshot, tags=["Live state"])
@@ -207,23 +253,57 @@ def create_app(url: str | None = None) -> FastAPI:
     @app.post("/api/v1/games/{game_id}/actions", response_model=StateSnapshot, tags=["Commands"])
     async def actions(game_id: str, action: Action, principal: Principal = Depends(authenticate)):
         command_body = action.model_dump(exclude_none=True)
-        result, changed = store.apply(game_id, command_body, principal)
-        if changed:
-            kind = EVENT_NAMES[action.type]
-            if action.type == "substitute" and len(action.payload.outgoing_ids) > 1:
-                kind = "substitution.group.updated"
-            if action.type == "move" and (action.payload.to == "PENALTY_BOX" or any(e.get("type") == "move" and e.get("payload", {}).get("player_id") == action.payload.player_id and e.get("payload", {}).get("from") == "PENALTY_BOX" for e in result["events"][-1:])):
-                kind = "penalty.location.updated"
-            hub.publish(game_id, {"type": kind, "game_id": game_id, "version": result["version"], "request_id": action.request_id, "server_time_ms": now_ms(), "state": result})
+        async with coordinator.lock(game_id):
+            result, changed = await run_in_threadpool(store.apply, game_id, command_body, principal)
+            if changed:
+                kind = EVENT_NAMES[action.type]
+                if action.type == "substitute" and len(action.payload.outgoing_ids) > 1:
+                    kind = "substitution.group.updated"
+                if action.type == "move" and (action.payload.to == "PENALTY_BOX" or any(e.get("type") == "move" and e.get("payload", {}).get("player_id") == action.payload.player_id and e.get("payload", {}).get("from") == "PENALTY_BOX" for e in result["events"][-1:])):
+                    kind = "penalty.location.updated"
+                await coordinator.changed(game_id, snapshot=result, kind=kind, request_id=action.request_id)
         return result
 
     @app.post("/api/v1/games/{game_id}/clock/observations", response_model=StateSnapshot, tags=["Clock"])
     async def clock_observations(game_id: str, observation: ExternalClock, principal: Principal = Depends(authenticate)):
         payload = observation.model_dump()
         action = {"request_id": payload.pop("request_id"), "expected_version": payload.pop("expected_version"), "type": "external_clock", "payload": payload}
-        result, changed = store.apply(game_id, action, principal)
-        if changed:
-            hub.publish(game_id, {"type": "clock.updated", "game_id": game_id, "version": result["version"], "state": result})
+        async with coordinator.lock(game_id):
+            result, changed = await run_in_threadpool(store.apply, game_id, action, principal)
+            if changed:
+                await coordinator.changed(game_id, snapshot=result, kind="clock.updated", request_id=action["request_id"])
+        return result
+
+    @app.get("/api/v1/games/{game_id}/clock/authority", tags=["Clock"])
+    async def clock_authority(game_id: str, principal: Principal = Depends(authenticate)):
+        require_supervisor(principal)
+        if not app.state.service_stream.enabled:
+            raise HTTPException(404, "Service streaming is disabled")
+        async with coordinator.lock(game_id):
+            result = await run_in_threadpool(store.live, game_id)
+        return {"version": result["state"]["version"],
+                "authority": result["state"]["clock_authority"],
+                "sources": app.state.service_stream.clock_sources(game_id)}
+
+    @app.post("/api/v1/games/{game_id}/clock/authority", response_model=StateSnapshot, tags=["Clock"])
+    async def set_clock_authority(game_id: str, body: ClockAuthorityRequest,
+                                  principal: Principal = Depends(authenticate)):
+        require_supervisor(principal)
+        if not app.state.service_stream.enabled:
+            raise HTTPException(404, "Service streaming is disabled")
+        if body.mode == "external" and {"source": body.source, "service_id": body.service_id} not in app.state.service_stream.clock_sources(game_id):
+            raise HTTPException(422, "Select a configured clock service and source for this match")
+        service_principal = SimpleNamespace(actor=principal.actor, service_id="operator",
+                                            permissions={"clock:authority"}, team_ids=None,
+                                            can_control_clock=True, clock_sources=[])
+        payload = body.model_dump(exclude={"request_id", "expected_version"})
+        data = {"request_id": body.request_id, "expected_version": body.expected_version,
+                "command": {"type": "clock.authority.set", "payload": payload}}
+        async with coordinator.lock(game_id):
+            _ack, changed = await run_in_threadpool(store.apply_service, game_id, data, service_principal)
+            result = await run_in_threadpool(lambda: public_snapshot(store.get(game_id)))
+            if changed:
+                await coordinator.changed(game_id, snapshot=result, kind="clock.updated", request_id=body.request_id)
         return result
 
     @app.websocket("/api/v1/games/{game_id}/ws")
@@ -236,22 +316,27 @@ def create_app(url: str | None = None) -> FastAPI:
             return
         try:
             resolve_principal(websocket.headers.get("authorization") or (f"Bearer {token}" if token else None))
-            initial = public_snapshot(store.get(game_id))
+            await run_in_threadpool(store.get, game_id)
         except (PermissionError, ValueError, StoreError):
             await websocket.close(code=1008, reason="Authentication failed or game unavailable")
             return
-        queue = hub.subscribe(game_id)
+        async with coordinator.lock(game_id):
+            queue = hub.subscribe(game_id)
+            try:
+                initial = await run_in_threadpool(lambda: public_snapshot(store.get(game_id)))
+            except Exception:
+                hub.unsubscribe(game_id, queue)
+                raise
         try:
             # Subscribe before yielding to accept: no accepted command can fall
             # between the initial snapshot and the event stream.
-            initial = public_snapshot(store.get(game_id))
             await websocket.accept()
             await websocket.send_json({"type": "state.resync", "game_id": game_id, "version": initial["version"], "state": initial})
             while True:
                 try:
                     event = await asyncio.wait_for(queue.get(), timeout=1.0)
                 except TimeoutError:
-                    current = public_snapshot(store.get(game_id))
+                    current = await run_in_threadpool(lambda: public_snapshot(store.get(game_id)))
                     fields = ("total_toi_ms", "current_shift_ms", "completed_shifts", "average_shift_ms", "longest_shift_ms", "toi_by_period")
                     event = {"type": "clock.tick", "game_id": game_id, "version": current["version"], "server_time_ms": now_ms(), "clock": current["clock"], "toi": [{"player_id": p["id"], **{key: p[key] for key in fields}} for p in current["players"]], "warnings": current["warnings"], "strengths": current["strengths"]}
                 await websocket.send_json(event)

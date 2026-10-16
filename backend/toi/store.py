@@ -17,11 +17,15 @@ from . import domain
 from .database import make_engine, sessions
 from .models import AuditRow, EventRow, GameRow, LineRow, LocationRow, PersonIdentityRow, PlayerRow, ReceiptRow, RosterRow, ShiftRow, TeamRow
 from .seed import create_demo_state
+from .service_store import ServiceStoreMixin
+from .journal import append_change, manual_authority, stream_enabled
 
 
 class StoreError(Exception):
-    def __init__(self, status: int, message: str):
+    def __init__(self, status: int, message: str, code: str | None = None, details: dict | None = None):
         self.status = status
+        self.code = code
+        self.details = details or {}
         super().__init__(message)
 
 
@@ -49,6 +53,15 @@ def public_snapshot(state: dict, at: int | None = None) -> dict:
 def constrain_external_clock(state: dict, at: int) -> tuple[dict, bool]:
     """Cap interpolation if an external provider stops reporting."""
     import os
+    authority = state.get("clock_authority")
+    if authority is not None:
+        cutoff = authority.get("stale_at_ms")
+        if authority["mode"] != "external" or cutoff is None or at < cutoff:
+            return state, False
+        state = domain.materialize_clock(state, max(state["clock"]["anchor_unix_ms"], cutoff))
+        state["clock"]["running"] = False
+        state["clock_authority"]["feed_status"] = "stale"
+        return state, True
     observation = state.get("external_clock_observation")
     if not observation or os.getenv("TOI_CLOCK_SOURCE", "manual") == "manual":
         return state, False
@@ -60,7 +73,7 @@ def constrain_external_clock(state: dict, at: int) -> tuple[dict, bool]:
     return state, True
 
 
-class Store:
+class Store(ServiceStoreMixin):
     def __init__(self, url: str):
         self.engine = make_engine(url)
         self.session = sessions(self.engine)
@@ -89,7 +102,7 @@ class Store:
                 raise StoreError(404, "Game not found")
             return deepcopy(row.state)
 
-    def create(self, game_id: str | None = None, **details) -> dict:
+    def create(self, game_id: str | None = None, *, actor="system", **details) -> dict:
         game_id = game_id or str(uuid4())
         with self.lock(game_id), self.session.begin() as session:
             existing = session.get(GameRow, game_id)
@@ -98,10 +111,13 @@ class Store:
             state = create_demo_state(game_id=game_id, now_ms=now_ms(), **details)
             # A snapshot initializes the domain's rebuildable initial-shift projection.
             state = domain.materialize_clock(state, now_ms())
-            session.add(GameRow(id=game_id, name=state["game"]["name"], status=state["game"]["status"], external_id=state["game"].get("external_id"), version=state["version"], state=state))
+            row = GameRow(id=game_id, name=state["game"]["name"], status=state["game"]["status"], external_id=state["game"].get("external_id"), version=state["version"], state=state)
+            session.add(row)
             session.flush()
             self._project(session, state)
-            return public_snapshot(state)
+            if stream_enabled():
+                self._ensure_journal(session, row, now_ms(), "game.created", actor=actor)
+            return public_snapshot(row.state)
 
     def _project(self, session, state: dict):
         game_id = state["game"]["id"]
@@ -151,45 +167,19 @@ class Store:
                 row = session.scalar(select(GameRow).where(GameRow.id == game_id).with_for_update())
                 if row is None:
                     raise StoreError(404, "Game not found")
+                if stream_enabled():
+                    self._ensure_journal(session, row, timestamp)
                 receipt = session.get(ReceiptRow, (game_id, action["request_id"]))
                 if receipt:
-                    if receipt.fingerprint != fingerprint or receipt.actor != principal.actor:
+                    if receipt.fingerprint != fingerprint or receipt.actor != principal.actor or receipt.service_id is not None:
                         raise StoreError(409, "Request ID was already used for a different command")
                     return deepcopy(receipt.response), False
                 if row.version != action["expected_version"]:
                     raise StoreError(409, "Game changed on another client. State resynchronisation required.")
-                before, _stale = constrain_external_clock(deepcopy(row.state), timestamp)
+                stored_before = deepcopy(row.state)
+                before, _stale = constrain_external_clock(stored_before, timestamp)
                 self._authorize(before, action, principal)
-                if action["type"] == "external_clock":
-                    state = self._external_clock(before, action, timestamp)
-                else:
-                    state = domain.apply_action(before, action, timestamp)
-                    if action["type"] == "clock":
-                        # An explicit supervisor command takes control immediately.
-                        # A fresh observation from the configured source may resume provider control.
-                        state.pop("external_clock_observation", None)
-                        state["clock"]["source"] = "manual"
-                if action["type"] == "setup":
-                    for team in state["teams"]:
-                        name = action["payload"].get("game", {}).get(f"{team['side']}_name")
-                        if name:
-                            team["name"] = str(name)[:100]
-                    if state.get("integration"):
-                        overrides = state["integration"].setdefault("operator_overrides", {"players": {}, "teams": {}, "game": []})
-                        old_players = {p["id"]: p for p in before["players"]}
-                        for player in state["players"]:
-                            fields = set(overrides["players"].get(player["id"], []))
-                            fields.update(key for key in ("name", "number", "position", "assigned_role", "eligible") if player.get(key) != old_players.get(player["id"], {}).get(key))
-                            if fields:
-                                overrides["players"][player["id"]] = sorted(fields)
-                        old_teams = {t["id"]: t for t in before["teams"]}
-                        for team in state["teams"]:
-                            fields = set(overrides["teams"].get(team["id"], []))
-                            fields.update(key for key in ("name", "short_name", "color") if team.get(key) != old_teams[team["id"]].get(key))
-                            if fields:
-                                overrides["teams"][team["id"]] = sorted(fields)
-                        if state["game"]["name"] != before["game"]["name"]:
-                            overrides["game"] = sorted(set(overrides["game"]) | {"name"})
+                state = self._mutate_domain(before, action, timestamp)
                 state["version"] = row.version + 1
                 result = public_snapshot(state, timestamp)
                 changed = session.execute(update(GameRow).where(GameRow.id == game_id, GameRow.version == row.version).values(state=state, version=state["version"], name=state["game"]["name"], status=state["game"]["status"], external_id=state["game"].get("external_id")))
@@ -197,12 +187,50 @@ class Store:
                     raise StoreError(409, "Concurrent update; resynchronise and try again")
                 self._project(session, state)
                 session.add(AuditRow(game_id=game_id, version=state["version"], actor=principal.actor, request_id=action["request_id"], created_at_ms=timestamp, command=action, previous_values={"locations": {p["id"]: p["location"] for p in before["players"]}, "clock": before["clock"]}, new_values={"locations": {p["id"]: p["location"] for p in state["players"]}, "clock": state["clock"]}))
-                session.add(ReceiptRow(game_id=game_id, request_id=action["request_id"], actor=principal.actor, fingerprint=fingerprint, response=result))
+                cursor = append_change(session, state, stored_before, action, principal.actor, action["request_id"], timestamp)
+                session.add(ReceiptRow(game_id=game_id, request_id=action["request_id"], actor=principal.actor, fingerprint=fingerprint, response=result, journal_cursor=cursor))
                 return result, True
         except domain.DomainError as error:
             raise StoreError(error.status_code, str(error)) from error
         except (IntegrityError, OperationalError) as error:
             raise StoreError(409, "Concurrent database write; resynchronise and retry with the same request ID") from error
+
+    def _mutate_domain(self, before: dict, action: dict, timestamp: int) -> dict:
+        if action["type"] == "external_clock":
+            if "clock_authority" in before:
+                raise StoreError(409, "This match requires fenced v2 clock observations", "AUTHORITY_CONFLICT")
+            state = self._external_clock(before, action, timestamp)
+        else:
+            state = domain.apply_action(before, action, timestamp)
+            if action["type"] == "clock":
+                # An explicit supervisor command takes control immediately.
+                # A fresh observation from the configured source may resume provider control.
+                state.pop("external_clock_observation", None)
+                state["clock"]["source"] = "manual"
+                if "clock_authority" in before:
+                    state["clock_authority"] = manual_authority(before["clock_authority"]["generation"] + 1)
+        if action["type"] == "setup":
+            for team in state["teams"]:
+                name = action["payload"].get("game", {}).get(f"{team['side']}_name")
+                if name:
+                    team["name"] = str(name)[:100]
+            if state.get("integration"):
+                overrides = state["integration"].setdefault("operator_overrides", {"players": {}, "teams": {}, "game": []})
+                old_players = {p["id"]: p for p in before["players"]}
+                for player in state["players"]:
+                    fields = set(overrides["players"].get(player["id"], []))
+                    fields.update(key for key in ("name", "number", "position", "assigned_role", "eligible") if player.get(key) != old_players.get(player["id"], {}).get(key))
+                    if fields:
+                        overrides["players"][player["id"]] = sorted(fields)
+                old_teams = {t["id"]: t for t in before["teams"]}
+                for team in state["teams"]:
+                    fields = set(overrides["teams"].get(team["id"], []))
+                    fields.update(key for key in ("name", "short_name", "color") if team.get(key) != old_teams[team["id"]].get(key))
+                    if fields:
+                        overrides["teams"][team["id"]] = sorted(fields)
+                if state["game"]["name"] != before["game"]["name"]:
+                    overrides["game"] = sorted(set(overrides["game"]) | {"name"})
+        return state
 
     def _authorize(self, state: dict, action: dict, principal):
         kind, payload = action["type"], action["payload"]

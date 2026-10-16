@@ -1,6 +1,6 @@
 # External service interface: clock, player TOI and recorded changes
 
-**Status: implementation-ready design, not an installed protocol upgrade.** Written 16 October 2026 against the current application. Sections 1–2 describe interfaces available now. Sections 3 onward specify an additive v2 service interface that still requires backend implementation and the acceptance checks below. The existing iPad interface and v1 endpoints remain supported.
+**Status: implemented in release 2.0.0.** The v2 service API is additive: the existing iPad interface and v1 endpoints remain supported. Enable `TOI_STREAM_ENABLED=true` and configure scoped `TOI_SERVICE_TOKENS` to use it. The [release/update guide](UPDATING.md) explains deployment of the prebuilt images. Sections 1–2 inventory the legacy v1 integration; sections 3 onward define v2. Latency/capacity numbers in section 13 remain acceptance targets unless a measured result is explicitly identified in [VALIDATION.md](VALIDATION.md).
 
 The requirement is a sustained two-way connection for an authoritative clock service, individual player TOI, the current on-ice players and their times, and an updating feed of everything recorded for a match. The design separates live calculated values from durable recorded changes so that neither is mistaken for the other.
 
@@ -8,7 +8,7 @@ The requirement is a sustained two-way connection for an authoritative clock ser
 
 1. [What exists now](#1-what-exists-now)
 2. [Connect to the existing application](#2-connect-to-the-existing-application)
-3. [Proposed architecture and ownership](#3-proposed-architecture-and-ownership)
+3. [V2 architecture and ownership](#3-v2-architecture-and-ownership)
 4. [Endpoints and transport](#4-endpoints-and-transport)
 5. [Messages and connection lifecycle](#5-messages-and-connection-lifecycle)
 6. [Live player and lineup data](#6-live-player-and-lineup-data)
@@ -45,7 +45,7 @@ Through the Portainer frontend, use the same host/port as the dashboard, for exa
 
 [API.md](API.md) contains the complete existing resource and payload reference. [INTEGRATION.md](INTEGRATION.md) covers website mounting and roster-provider imports.
 
-Current limitations relevant to a continuous service feed:
+Limitations of the legacy v1 stream (addressed by the separate v2 service interface below):
 
 - WebSocket updates are not a durable journal. Slow clients can receive a replacement snapshot; disconnected clients can miss individual notifications.
 - Idle clock ticks arrive after approximately one second without a mutation, rather than on a guaranteed periodic schedule.
@@ -74,7 +74,7 @@ Use the returned game ID. A provider match `966` normally maps to `hz-966`; a lo
 
 ### Read the current live feed
 
-For example, a Python service using the application's existing `websockets` dependency can connect as follows. This is v1 code, usable with the current backend; the v2 examples later are proposed contracts.
+For example, a Python service using the application's existing `websockets` dependency can connect as follows. This is v1 code, usable with the current backend; the v2 examples later use the separate service protocol.
 
 ```python
 import json
@@ -101,7 +101,7 @@ with connect(url, additional_headers=headers) as socket:
 
 This observation example deliberately omits a production consumer's reconnect loop and durable processing. For a v1 cache: keep the latest state version, discard older snapshots/ticks, merge equal-version ticks by player ID, and fetch `/state` if a tick has a higher version. Do not replace a newer cache with an old idempotent HTTP receipt. On disconnect mark output stale and reconnect with bounded exponential backoff; fetch the current state. This recovers current data, not every missed record.
 
-### Supply the clock today
+### Supply the clock through legacy v1
 
 Set `TOI_CLOCK_SOURCE` to the exact provider name, for example `scoreboard-a`, and restart/redeploy the backend with that setting. Its default is `manual`. Submit the following shape to `POST /api/v1/games/{id}/clock/observations`, using a supervisor credential:
 
@@ -121,9 +121,9 @@ Values are examples: supply the actual clock reading, current version and UTC ob
 
 Persist observations at approximately 1 Hz plus immediate start/pause/period transitions. Debounce noisy OCR and coalesce display-identical raw samples in the clock adapter. Do not send video-frame-rate OCR directly to this endpoint: each current observation rewrites match projections and saves a full growing response receipt. Over a long match, receipt storage can grow quadratically with the number of observations.
 
-Existing manual takeover has no fence: a later valid configured-source observation can take control again. Pause the clock bridge during deliberate manual control. The proposed v2 ownership rules below close that gap; they are not present today.
+Non-activated v1 manual takeover has no fence: a later valid configured-source observation can take control again. Pause a legacy clock bridge during deliberate manual control. Activating v2 creates a journal baseline and fences old external feeds: it caps their credited time at the saved stale deadline, pauses them, and requires explicit reassignment using the v2 ownership controls. Legacy unfenced observations are rejected for activated games.
 
-## 3. Proposed architecture and ownership
+## 3. V2 architecture and ownership
 
 TOI remains authoritative for player locations, shifts, game playing time, TOI calculations, corrections and recommendation learning. A configured clock source supplies clock observations. Consumers render or transform TOI data; they do not write calculated player times back into the database.
 
@@ -152,9 +152,9 @@ The core does not send arbitrary executable instructions to other services. It s
 
 ## 4. Endpoints and transport
 
-**All v2 paths in this document are proposed and currently return 404.** They must not be used as deployment instructions for the existing image.
+**These v2 paths are implemented in the 2.0.0 backend.** HTTP routes return 404 while streaming is disabled; enabled routes require a scoped service credential. Existing pre-v2 images do not gain these endpoints by changing Compose alone.
 
-| Proposed endpoint | Contract |
+| Endpoint | Contract |
 | --- | --- |
 | `WS /api/v2/games/{game_id}/stream` | One sustained two-way connection per match and service |
 | `GET /api/v2/games/{game_id}/live` | `{baseline_cursor, sampled_at_ms, state}` using the live state described below |
@@ -168,7 +168,7 @@ Use ordinary RFC 6455 WebSockets, UTF-8 JSON text messages, and subprotocol **`l
 
 One connection addresses one game. A service following multiple games opens one connection per game. The initial version has no dynamic topic/filter language: authorized consumers receive the entire match's public live projection and journal. Team restrictions limit writes, not partial read projections.
 
-Message bodies, identifiers, times and errors are defined by [the JSON Schema](docs/interfaces/service-stream-v2.schema.json). Its client/server root definitions also establish message direction. Examples are in [examples.json](docs/interfaces/examples.json).
+Message bodies, identifiers, times and errors are defined by [the JSON Schema](docs/interfaces/service-stream-v2.schema.json). Its client/server root definitions also establish message direction. Examples are in [examples.json](docs/interfaces/examples.json). Runtime wire admission reuses the existing Pydantic action models; no JSON Schema validator is added to production dependencies.
 
 ## 5. Messages and connection lifecycle
 
@@ -354,11 +354,11 @@ Validate the authorized service/source/generation, increasing source sequence an
 
 The bridge should send 1 Hz observations plus immediate transitions. All accepted observations are journaled. Limit sustained clock writes to 2/s, with a small burst of 5 for transitions; reject excess input, do not create an unbounded input queue. A continuously uncertain/contradictory OCR reading should be exposed as adapter status and should not start the official clock.
 
-Use NTP-synchronized hosts. Preserve the existing 2,000 ms maximum future tolerance; proposed fenced-clock staleness defaults to 3,000 ms at a 1 Hz feed. Age is measured from `observed_at_ms`, not an adapter's resend time. Do not resend an old reading with a fabricated newer observation timestamp.
+Use NTP-synchronized hosts. Preserve the existing 2,000 ms maximum future tolerance; fenced-clock staleness defaults to 3,000 ms at a 1 Hz feed. Age is measured from `observed_at_ms`, not an adapter's resend time. Do not resend an old reading with a fabricated newer observation timestamp.
 
 A scheduled watchdog must recheck the latest authority generation/observation transactionally and persist a single `clock.feed.stale` record when that generation's deadline passes. Clamp credited playing time at the observation's stale cutoff; do not credit the wait for the watchdog task. No new owner is granted by a timeout. A fresh observation may resume only while the same external owner/generation is still active. Once manual takeover occurs, an old feed cannot resume it.
 
-The current computed stale projection does not itself persist a new event/version. The proposed watchdog and its journal record are additional implementation work. If a database outage prevents the watchdog commit, live output still marks the feed stale and stops interpolation; persistence resumes with the original cutoff once the database recovers.
+The current computed stale projection does not itself persist a new event/version. V2 adds a scheduled watchdog and a durable stale record; non-activated v1 retains its original computed projection. If a database outage prevents the watchdog commit, live output still marks the feed stale and stops interpolation; persistence resumes with the original cutoff once the database recovers.
 
 ## 8. Commands and acknowledgements
 
@@ -426,7 +426,7 @@ All command transports share one per-game sequencer. Run blocking database/domai
 
 Cursors bind game, durable generation and journal sequence. Their encoding is opaque and versioned; validate all parts. A cursor is not a credential. Use `event_id` for downstream deduplication, and `journal_seq` to check contiguous records within a generation.
 
-Retain at least seven days of journal records by default, and always retain the current tail/baseline needed to establish a connection. For a required archive longer than seven days, extend retention and/or persist every record in the consuming service's own journal. Seven days is a proposed replay policy, not an existing application configuration.
+Retain at least seven days of journal records by default, and always retain the current tail/baseline needed to establish a connection. For a required archive longer than seven days, extend retention and/or persist every record in the consuming service's own journal. Configure this window with `TOI_STREAM_JOURNAL_RETENTION_DAYS`; it defaults to seven days.
 
 `oldest_cursor` means the oldest **valid exclusive resume position**, immediately before the earliest retained record. Thus an unpruned journal beginning at sequence 1 has a valid sequence-0 cursor. `high_water_cursor` identifies the last committed record captured for the bootstrap/page barrier. The server must not expose a game through v2 before its baseline journal record exists.
 
@@ -447,13 +447,13 @@ Each record is the same record shape as on the socket. The response is capped at
 
 Wrong-game, wrong-generation, ahead-of-tail, malformed and expired cursors have distinct errors. On expiry/generation change, report the earliest available and high-water cursors. The consumer must report the history gap and explicitly choose retained-history replay or a fresh baseline. A current snapshot cannot recover missing records for an archival consumer.
 
-Backend restart changes `server_epoch` but not journal generation or valid checkpoints. Restoring an older database backup or recreating a game timeline must rotate journal generation before service access resumes, so an old cursor cannot silently identify divergent history. The future restore/admin tooling must perform that step; it is not implemented by today's backup guide.
+Backend restart changes `server_epoch` but not journal generation or valid checkpoints. Restoring an older database backup or recreating a game timeline must rotate journal generation before service access resumes, so an old cursor cannot silently identify divergent history. With every API worker stopped, run `python -m toi.admin rotate-journals --all --confirm-offline` as documented in [PORTAINER.md](PORTAINER.md#back-up-and-restore-match-data), before restarting the backend. This invalidates old cursors, pauses clocks and fences old owners while preserving recorded TOI.
 
 ## 10. Flow control and failures
 
 ### Default limits to implement
 
-| Item | Proposed default |
+| Item | Default |
 | --- | --- |
 | Client JSON message | 64 KiB after decompression/reassembly |
 | Server JSON message | 1 MiB; bound roster/command/change data before commit to respect it |
@@ -500,7 +500,7 @@ Use close 1000 for normal shutdown, 1008 for policy/auth/cursor violations, 1009
 
 ## 11. Authentication and permissions
 
-The current shared operator token and named team-operator tokens are not a service permission system. They provide no per-game read restriction or dedicated read-only scope. The proposed endpoint must fail closed if service identity is not configured, even where v1 local demo mode is enabled.
+The current shared operator token and named team-operator tokens are not a service permission system. They provide no per-game read restriction or dedicated read-only scope. The service endpoint fails closed if service identity is not configured, even where v1 local demo mode is enabled.
 
 Add a service-principal adapter with a stable `service_id`, explicit game allowlist, allowed command/team/source scopes and credential expiry/revocation policy. A credential is not a `client_id` supplied by the connecting service. Current shared operator credentials must not automatically become unrestricted v2 service credentials.
 
@@ -519,20 +519,20 @@ Require both read permissions for the initial combined service stream. A graphic
 
 Authenticate before lookup/subscription and authorize every command before receipt access. Revalidate expiry/revocation at least on each mutation and heartbeat; close revoked/expired sockets and require a new authenticated connection. Do not accept an in-band request to change identities. Only sanitized public data, never bearer tokens, database credentials or arbitrary provider payloads, goes into the journal or logs.
 
-An initial proposed `TOI_SERVICE_TOKENS` mapping could associate tokens supplied through deployment secrets with `{service_id,game_ids,permissions,team_ids,clock_sources,expires_at_ms}`. This variable is **not supported by the current application**; the implementing change must validate it strictly, document rotation and provide redacted errors. Avoid placing real tokens in Git or query strings. TLS and service credential management belong at the deployment/auth boundary, not in clock payloads.
+`TOI_SERVICE_TOKENS` is a JSON object mapping bearer tokens to `{service_id,game_ids,permissions,team_ids,clock_sources,expires_at_ms}`. Configuration is validated strictly, with redacted errors. `service_id`, nonempty `game_ids` and nonempty `permissions` are required. `game_ids:["*"]` explicitly allows all games; other wildcards are rejected. `clock_sources` must name explicit sources. Two tokens may temporarily share the same service ID during rotation; both resolve to the same audit actor/rate bucket. Remove the old token and redeploy the backend to complete rotation. Neither token belongs in the operator browser. Avoid placing real tokens in Git or query strings. TLS and service credential management belong at the deployment/auth boundary, not in clock payloads.
 
 ## 12. Deployment and configuration
 
-No additional public port is required: both API versions travel through frontend port 8080 (or its configured replacement). nginx's current `/api/` location already forwards upgrades with HTTP/1.1, buffering disabled and a 75-second read timeout. Proposed 15-second heartbeats keep the connection active. An upstream HTTPS proxy must also forward upgrades and use idle timeouts longer than heartbeat/deadline windows.
+No additional public port is required: both API versions travel through frontend port 8080 (or its configured replacement). nginx's current `/api/` location already forwards upgrades with HTTP/1.1, buffering disabled and a 75-second read timeout. The 15-second heartbeats keep the connection active. An upstream HTTPS proxy must also forward upgrades and use idle timeouts longer than heartbeat/deadline windows.
 
 Remain on one backend worker until a shared journal dispatcher/lease design is implemented and tested. PostgreSQL is the service deployment database; SQLite remains useful for tests/development, not the basis for the stated concurrent-service acceptance target. Sharing a PostgreSQL database alone does not make multi-worker socket fanout correct.
 
-Existing configuration remains in [PORTAINER.md](PORTAINER.md) and [.env.example](.env.example). Proposed settings to add in the implementation, with the limits above as defaults:
+Existing configuration remains in [PORTAINER.md](PORTAINER.md) and [.env.example](.env.example). Service settings, with the limits above as defaults:
 
-| New setting | Purpose |
+| Setting | Purpose |
 | --- | --- |
 | `TOI_SERVICE_TOKENS` or replacement identity provider | Scoped service authentication |
-| `TOI_STREAM_ENABLED` | Explicit rollout gate; default false until implementation/validation |
+| `TOI_STREAM_ENABLED` | Explicit rollout gate; default false for source deployments, true in the release stack |
 | `TOI_STREAM_TICK_HZ` | Default shared sample rate, 5 |
 | `TOI_STREAM_JOURNAL_RETENTION_DAYS` | Replay window, 7 |
 | `TOI_STREAM_CLOCK_STALE_MS` | Fenced clock deadline, 3000 |
@@ -543,7 +543,7 @@ Protocol v2 fixes the 64 KiB/1 MiB message limits, 15-second/5-second heartbeat 
 
 The current health endpoint checks API/database availability. Add a separate service-readiness check covering journal migrations, dispatcher progress and configured identity; clock-feed freshness is a per-game status, not equivalent to database failure. The clock bridge is an optional separate service/adapter: a source outage must leave the operator's manual controls available.
 
-An interface implementation requires rebuilding the backend image and deploying migrations. New frontend code is needed only for explicit ownership/status controls and compatibility behavior. These design/doc files alone do not add any endpoint to an already built Portainer image.
+Deploy matching 2.0.0 backend/frontend images to install the API and migration 0003. The existing clock dialog now lists configured clock services, shows stale/fresh/manual status and supports explicit handover. Manual start/pause/set/advance takes ownership back; the operator screen retains its quiet layout. An already-built v1 container still needs the image update described in [UPDATING.md](UPDATING.md).
 
 ## 13. Latency, capacity and observability
 
@@ -565,18 +565,13 @@ Measure send/receive with the same client's monotonic clock. Correlate with requ
 
 Metrics should include connection count/age, authenticated rejections, ACK latency, command conflicts, journal commit-to-publish lag, replay backlog/expiry, queued bytes, coalesced ticks, slow-client closures, last heartbeat RTT, clock-source age/sequence/generation, stale transitions, database transaction time and storage growth. Log connection/service/game IDs, request IDs, versions and journal cursors with credentials redacted.
 
-The present store rebuilds projections and persists full-history snapshots/receipts per mutation. Meeting sustained targets requires a bounded live read model, compact service-command receipts, append-only journal/history, incremental projections/clock ingestion and shared sampling. Preserve existing v1 retry responses and all domain tests while changing storage. Merely putting the current write path behind a socket does not solve its sustained-write cost.
+The v2 clock path now uses compact receipts, one bounded live projection and journal batch per observation, no additional domain clock-history events, and no full roster/shift projection rewrite. Shared samples are computed once per game. Legacy v1 retry responses remain unchanged. Player mutations and historical corrections still operate on the existing match aggregate; very large histories therefore require the stated long-match/soak measurements before claiming the capacity target.
 
 ## 14. Implementation and acceptance plan
 
-This request supplies the design and documentation. Runtime implementation should be delivered as a separate reviewed change in the following order:
+The release implements service principals, journal migration and atomic writer hooks, compact service receipts, shared live sampling, bounded duplex connections, replay pages, fenced clocks, operator handover and offline restore-generation rotation. The release pipeline runs native/frontend tests and PostgreSQL/nginx container checks before publishing versioned artifacts.
 
-1. Add service principals, strict authorization and protocol schemas. Keep v1 behavior and existing UI tests intact.
-2. Migrate journal generation/records and compact service receipts; add a transaction-aware mutation coordinator covering every ingress. Activate existing matches with an explicit baseline.
-3. Add bounded live projections, the durable journal dispatcher, shared sampler and stable REST replay pages. Address current history/receipt write amplification before claiming sustained clock ingestion.
-4. Implement the duplex socket with one receiver/sender, heartbeat, bounded queues and exact retry semantics.
-5. Add fenced clock authority/watchdog and the v1 compatibility gate. Expose operator source/stale/manual status and deliberate handover.
-6. Validate native domain/API behavior, real PostgreSQL transactions and nginx/container transport; then load/soak-test before enabling the rollout flag.
+The following runtime acceptance cases are covered by automated regression/container checks; the long-duration capacity target remains a separate operational validation requirement:
 
 Acceptance cases must demonstrate:
 
@@ -594,12 +589,12 @@ Acceptance cases must demonstrate:
 - Malformed/oversized JSON, credential expiry/revocation, invalid scopes, wrong game/team/source and rate-limit bypass by reconnect are tested.
 - A real nginx-proxied soak test meets measured latency/resource/storage targets with a preloaded long match; record limitations and failed criteria before rollout.
 
-No latency/soak results are fabricated here. Validation of the design's machine contract checks structural examples and source-payload consistency; it does not prove a runtime v2 implementation exists or meets these acceptance criteria.
+See [VALIDATION.md](VALIDATION.md) for executed tests and measured local results. Contract examples validate structure/source consistency; transport/storage tests and container smoke checks validate implementation behavior. A three-hour LAN soak at the full reference load has not been claimed as completed.
 
 ## 15. Contract files and references
 
 - [Existing HTTP/stream API](API.md), [integration adapters](INTEGRATION.md), [architecture](ARCHITECTURE.md), [Portainer deployment](PORTAINER.md).
-- [Proposed client/server JSON Schema](docs/interfaces/service-stream-v2.schema.json), [valid wire examples](docs/interfaces/examples.json), and [contract validation tooling](scripts/validate_service_interface.py). See [tooling requirements](docs/interfaces/requirements.txt); these are documentation tools, not new runtime dependencies.
+- [Client/server JSON Schema](docs/interfaces/service-stream-v2.schema.json), [valid wire examples](docs/interfaces/examples.json), and [contract validation tooling](scripts/validate_service_interface.py). See [tooling requirements](docs/interfaces/requirements.txt); these are documentation tools, not new runtime dependencies.
 - [RFC 6455](https://www.rfc-editor.org/rfc/rfc6455.html) defines WebSocket framing, subprotocol negotiation and control frames. This document defines application semantics above that transport; a WebSocket connection itself does not provide durable replay or command idempotency.
 - [nginx WebSocket proxy documentation](https://nginx.org/en/docs/http/websocket.html) explains upgrade forwarding and read-timeout/heartbeat behavior.
 - [JSON Schema Draft 2020-12](https://json-schema.org/draft/2020-12/json-schema-core) defines the machine-contract format; semantic ownership, ordering, transaction and retention rules in this document also require runtime tests.

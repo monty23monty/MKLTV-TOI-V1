@@ -68,7 +68,7 @@ WebSockets carry full snapshots for the initial connection and persisted mutatio
 
 ## Deployment and trade-offs
 
-The proposed external-service protocol is specified in [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md), with JSON Schema and examples under `docs/interfaces/`. Its duplex command transport, transactional replay journal, scoped service identities and fenced clock ownership are design work, not current capabilities. A future implementation must share the existing domain rules and coordinate every HTTP/WebSocket/import writer; adding another transport alone does not meet the documented durability or sustained-latency targets.
+The v2 external-service protocol is specified in [SERVICE_INTERFACE.md](SERVICE_INTERFACE.md), with JSON Schema and examples under `docs/interfaces/`. Its duplex transport uses scoped service principals, transactional journal/receipts, shared per-game sampling, bounded queues and clock fencing. HTTP/WebSocket/import writers share `MutationCoordinator`; journal publication reads committed rows rather than relying on a process notification. `service_store.py` provides compact clock writes without duplicating domain timing rules. [UPDATING.md](UPDATING.md) describes immutable image releases, migration, preserved volumes and rollback. The latency/capacity targets require the stated operational measurements.
 
 Docker Compose runs PostgreSQL, a single FastAPI worker and nginx serving a compiled frontend. Nginx forwards `/api/` and WebSocket upgrades to the API. Native development uses the same domain and API with SQLite by default. Alembic owns schema upgrades; existing database files or volumes must be backed up before future migrations.
 
